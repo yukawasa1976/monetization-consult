@@ -33,6 +33,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# knowledge source files (keep generated summaries only)
+knowledge/*.docx
+knowledge/knowledge-base.txt
+
 # vercel
 .vercel
 

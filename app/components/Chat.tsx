@@ -178,7 +178,14 @@ export default function Chat() {
 
       setAttachedFile(null);
 
-      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      if (!response.ok) {
+        let detail = "";
+        try {
+          const errBody = await response.json();
+          detail = errBody.error || "";
+        } catch { /* ignore */ }
+        throw new Error(detail || `API error: ${response.status}`);
+      }
       await readStream(response, newMessages, "evaluation");
     } catch (error) {
       const errorMessage =

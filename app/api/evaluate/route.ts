@@ -111,6 +111,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    console.error("Evaluate API error:", error);
     const message =
       error instanceof Error ? error.message : "Internal server error";
     return new Response(JSON.stringify({ error: message }), {

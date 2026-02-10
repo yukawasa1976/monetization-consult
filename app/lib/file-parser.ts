@@ -1,5 +1,3 @@
-import mammoth from "mammoth";
-
 const MAX_CHARS = 30000;
 
 export async function parseFile(
@@ -19,7 +17,8 @@ export async function parseFile(
       break;
     }
     case "docx": {
-      const result = await mammoth.extractRawText({ buffer });
+      const mammoth = await import("mammoth");
+      const result = await mammoth.default.extractRawText({ buffer });
       text = result.value;
       break;
     }

@@ -98,8 +98,8 @@ export default function Chat() {
     }
   };
 
-  const sendChat = async () => {
-    const trimmed = input.trim();
+  const sendChat = async (directText?: string) => {
+    const trimmed = (directText ?? input).trim();
     if (!trimmed || isLoading) return;
 
     const userMessage: Message = { role: "user", content: trimmed, type: "chat" };
@@ -223,8 +223,8 @@ export default function Chat() {
     setMode("chat");
     setAttachedFile(null);
     if (suggestion) {
-      setInput(suggestion);
-      setTimeout(() => textareaRef.current?.focus(), 100);
+      setInput("");
+      sendChat(suggestion);
     }
   };
 

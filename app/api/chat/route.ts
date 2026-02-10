@@ -1,11 +1,22 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 import { CHAT_SYSTEM_PROMPT } from "@/app/lib/prompts";
+import { checkRateLimit, chatLimiter } from "@/app/lib/rate-limit";
 
 const anthropic = new Anthropic();
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimit = await checkRateLimit(request, chatLimiter);
+    if (!rateLimit.success) {
+      return new Response(
+        JSON.stringify({
+          error: "1日のチャット上限（50回）に達しました。明日またお試しください。",
+        }),
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     const { messages } = await request.json();
 
     if (!messages || !Array.isArray(messages)) {

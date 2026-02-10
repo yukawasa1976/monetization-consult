@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 import { buildEvaluationSystemPrompt } from "@/app/lib/prompts";
+import { checkRateLimit, evalLimiter } from "@/app/lib/rate-limit";
 
 const anthropic = new Anthropic();
 
@@ -32,6 +33,16 @@ async function extractPlanText(request: NextRequest): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimit = await checkRateLimit(request, evalLimiter);
+    if (!rateLimit.success) {
+      return new Response(
+        JSON.stringify({
+          error: "1日の評価上限（5回）に達しました。明日またお試しください。",
+        }),
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     const planText = await extractPlanText(request);
     const systemPrompt = buildEvaluationSystemPrompt(planText);
 

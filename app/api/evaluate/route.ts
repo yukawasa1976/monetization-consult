@@ -1,8 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 import { buildEvaluationSystemPrompt } from "@/app/lib/prompts";
-import { parseFile } from "@/app/lib/file-parser";
-import { sendHighScoreNotification } from "@/app/lib/email";
 
 const anthropic = new Anthropic();
 
@@ -15,6 +13,7 @@ async function extractPlanText(request: NextRequest): Promise<string> {
     const text = formData.get("text") as string | null;
 
     if (file) {
+      const { parseFile } = await import("@/app/lib/file-parser");
       const buffer = Buffer.from(await file.arrayBuffer());
       return parseFile(buffer, file.name);
     }
@@ -81,6 +80,7 @@ export async function POST(request: NextRequest) {
           if (scoreMatch) {
             const score = parseInt(scoreMatch[1], 10);
             if (score > 80) {
+              const { sendHighScoreNotification } = await import("@/app/lib/email");
               sendHighScoreNotification(
                 score,
                 planText.slice(0, 500),

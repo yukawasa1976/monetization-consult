@@ -1,5 +1,4 @@
 import mammoth from "mammoth";
-import { PDFParse } from "pdf-parse";
 
 const MAX_CHARS = 30000;
 
@@ -12,6 +11,7 @@ export async function parseFile(
 
   switch (ext) {
     case "pdf": {
+      const { PDFParse } = await import("pdf-parse");
       const parser = new PDFParse({ data: new Uint8Array(buffer) });
       const result = await parser.getText();
       text = result.text;

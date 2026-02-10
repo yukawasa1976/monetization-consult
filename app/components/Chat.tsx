@@ -257,6 +257,17 @@ export default function Chat() {
     setMode("evaluate");
   };
 
+  const parseSuggestions = (content: string): { body: string; suggestions: string[] } => {
+    const match = content.match(/\n*【次の質問候補】\n([\s\S]*?)$/);
+    if (!match) return { body: content, suggestions: [] };
+    const body = content.slice(0, match.index).trimEnd();
+    const suggestions = match[1]
+      .split("\n")
+      .map((line) => line.replace(/^[-・]\s*/, "").trim())
+      .filter((line) => line.length > 0);
+    return { body, suggestions };
+  };
+
   return (
     <div className="flex h-dvh flex-col bg-zinc-50">
       {/* Header */}
@@ -385,24 +396,42 @@ export default function Chat() {
                     content={message.content}
                     isStreaming={isLoading && index === messages.length - 1}
                   />
-                ) : (
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {message.content}
-                    {isLoading &&
-                      message.role === "assistant" &&
-                      index === messages.length - 1 &&
-                      message.content === "" && (
-                        <span className="inline-block animate-pulse">
-                          考えています...
-                        </span>
+                ) : (() => {
+                  const isStreamingThis = isLoading && message.role === "assistant" && index === messages.length - 1;
+                  const { body, suggestions } = message.role === "assistant" && !isStreamingThis
+                    ? parseSuggestions(message.content)
+                    : { body: message.content, suggestions: [] };
+                  return (
+                    <>
+                      <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                        {body}
+                        {isStreamingThis && message.content === "" && (
+                          <span className="inline-block animate-pulse">
+                            考えています...
+                          </span>
+                        )}
+                      </div>
+                      {suggestions.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {suggestions.map((s) => (
+                            <button
+                              key={s}
+                              onClick={() => sendChat(s)}
+                              className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-700 transition-colors hover:border-zinc-300 hover:bg-zinc-100"
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
                       )}
-                  </div>
-                )}
+                    </>
+                  );
+                })()}
                 {message.role === "assistant" &&
                   message.content &&
                   !(isLoading && index === messages.length - 1) && (
                     <div className="mt-2 flex justify-end">
-                      <CopyButton text={message.content} />
+                      <CopyButton text={parseSuggestions(message.content).body} />
                     </div>
                   )}
               </div>

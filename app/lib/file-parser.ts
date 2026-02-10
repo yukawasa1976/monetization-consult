@@ -9,11 +9,16 @@ export async function parseFile(
 
   switch (ext) {
     case "pdf": {
-      const { PDFParse } = await import("pdf-parse");
-      const parser = new PDFParse({ data: new Uint8Array(buffer) });
-      const result = await parser.getText();
-      text = result.text;
-      parser.destroy();
+      const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+      const data = new Uint8Array(buffer);
+      const doc = await pdfjsLib.getDocument({ data, useSystemFonts: true }).promise;
+      const pages: string[] = [];
+      for (let i = 1; i <= doc.numPages; i++) {
+        const page = await doc.getPage(i);
+        const content = await page.getTextContent();
+        pages.push(content.items.map((item) => "str" in item ? item.str : "").join(""));
+      }
+      text = pages.join("\n");
       break;
     }
     case "docx": {

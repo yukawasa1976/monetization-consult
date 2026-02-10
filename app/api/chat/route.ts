@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     const stream = anthropic.messages.stream({
       model: "claude-sonnet-4-5-20250929",
-      max_tokens: 512,
+      max_tokens: 1024,
       system: CHAT_SYSTEM_PROMPT,
       messages: messages.map((msg: { role: string; content: string }) => ({
         role: msg.role as "user" | "assistant",

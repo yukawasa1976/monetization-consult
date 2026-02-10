@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import FileUpload from "./FileUpload";
 import EvaluationResult from "./EvaluationResult";
+import CopyButton from "./CopyButton";
 
 type Message = {
   role: "user" | "assistant";
@@ -333,12 +334,17 @@ export default function Chat() {
                 }`}
               >
                 {message.role === "assistant" && (
-                  <div className="mb-1 text-xs font-semibold text-zinc-500">
-                    川崎裕一
-                    {message.type === "evaluation" && (
-                      <span className="ml-2 rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-400">
-                        事業計画評価
-                      </span>
+                  <div className="mb-1 flex items-center justify-between text-xs font-semibold text-zinc-500">
+                    <div>
+                      川崎裕一
+                      {message.type === "evaluation" && (
+                        <span className="ml-2 rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-400">
+                          事業計画評価
+                        </span>
+                      )}
+                    </div>
+                    {message.content && (
+                      <CopyButton text={message.content} />
                     )}
                   </div>
                 )}

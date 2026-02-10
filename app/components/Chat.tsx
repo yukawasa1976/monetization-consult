@@ -219,9 +219,38 @@ export default function Chat() {
     }
   };
 
-  const switchToChat = () => {
+  const switchToChat = (suggestion?: string) => {
     setMode("chat");
     setAttachedFile(null);
+    if (suggestion) {
+      setInput(suggestion);
+      setTimeout(() => textareaRef.current?.focus(), 100);
+    }
+  };
+
+  const getFollowUpSuggestions = (content: string): string[] => {
+    const axes = [
+      { label: "売り物", pattern: /【売り物:\s*(\d+)\/20】/ },
+      { label: "値付け", pattern: /【値付け:\s*(\d+)\/20】/ },
+      { label: "売る人", pattern: /【売る人:\s*(\d+)\/20】/ },
+      { label: "売れる仕組み", pattern: /【売れる仕組み:\s*(\d+)\/20】/ },
+      { label: "売上管理", pattern: /【売上管理:\s*(\d+)\/20】/ },
+    ];
+    const scored = axes
+      .map(({ label, pattern }) => {
+        const m = content.match(pattern);
+        return m ? { label, score: parseInt(m[1], 10) } : null;
+      })
+      .filter((x): x is { label: string; score: number } => x !== null)
+      .sort((a, b) => a.score - b.score);
+
+    const suggestions: string[] = [];
+    if (scored.length >= 2) {
+      suggestions.push(`「${scored[0].label}」の改善方法を具体的に教えて`);
+      suggestions.push(`「${scored[1].label}」を強化するにはどうすればいい？`);
+    }
+    suggestions.push("全体的な改善の優先順位を教えて");
+    return suggestions;
   };
 
   const switchToEvaluate = () => {
@@ -254,7 +283,7 @@ export default function Chat() {
               </button>
             ) : (
               <button
-                onClick={switchToChat}
+                onClick={() => switchToChat()}
                 disabled={isLoading}
                 className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50"
               >
@@ -341,17 +370,12 @@ export default function Chat() {
                 }`}
               >
                 {message.role === "assistant" && (
-                  <div className="mb-1 flex items-center justify-between text-xs font-semibold text-zinc-500">
-                    <div>
-                      川崎裕一
-                      {message.type === "evaluation" && (
-                        <span className="ml-2 rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-400">
-                          事業計画評価
-                        </span>
-                      )}
-                    </div>
-                    {message.content && (
-                      <CopyButton text={message.content} />
+                  <div className="mb-1 text-xs font-semibold text-zinc-500">
+                    川崎裕一
+                    {message.type === "evaluation" && (
+                      <span className="ml-2 rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-400">
+                        事業計画評価
+                      </span>
                     )}
                   </div>
                 )}
@@ -374,23 +398,45 @@ export default function Chat() {
                       )}
                   </div>
                 )}
+                {message.role === "assistant" &&
+                  message.content &&
+                  !(isLoading && index === messages.length - 1) && (
+                    <div className="mt-2 flex justify-end">
+                      <CopyButton text={message.content} />
+                    </div>
+                  )}
               </div>
             </div>
           ))}
 
-          {/* Post-evaluation action */}
+          {/* Post-evaluation follow-up */}
           {!isLoading &&
             messages.length > 0 &&
             messages[messages.length - 1]?.type === "evaluation" &&
             messages[messages.length - 1]?.role === "assistant" &&
             messages[messages.length - 1]?.content !== "" && (
-              <div className="flex justify-center">
-                <button
-                  onClick={switchToChat}
-                  className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
-                >
-                  チャットで詳しく相談する
-                </button>
+              <div className="flex justify-start">
+                <div className="max-w-[85%] rounded-2xl border border-zinc-100 bg-white px-4 py-3 shadow-sm">
+                  <div className="mb-1 text-xs font-semibold text-zinc-500">
+                    川崎裕一
+                  </div>
+                  <div className="mb-3 text-sm leading-relaxed text-zinc-800">
+                    評価結果について、もう少し詳しくお話しできます。気になる点はありますか？
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {getFollowUpSuggestions(
+                      messages[messages.length - 1].content
+                    ).map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        onClick={() => switchToChat(suggestion)}
+                        className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-700 transition-colors hover:border-zinc-300 hover:bg-zinc-100"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 

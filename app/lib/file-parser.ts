@@ -1,5 +1,21 @@
 const MAX_CHARS = 30000;
 
+// Polyfill DOMMatrix for serverless environments (Vercel)
+// pdfjs-dist references it but text extraction doesn't need real matrix ops
+if (typeof globalThis.DOMMatrix === "undefined") {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).DOMMatrix = class DOMMatrix {
+    m: number[] = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+    a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
+    is2D = true; isIdentity = true;
+    inverse() { return new DOMMatrix(); }
+    multiply() { return new DOMMatrix(); }
+    scale() { return new DOMMatrix(); }
+    translate() { return new DOMMatrix(); }
+    transformPoint() { return { x: 0, y: 0, z: 0, w: 1 }; }
+  };
+}
+
 export async function parseFile(
   buffer: Buffer,
   fileName: string

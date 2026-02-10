@@ -396,37 +396,21 @@ export default function Chat() {
                     content={message.content}
                     isStreaming={isLoading && index === messages.length - 1}
                   />
-                ) : (() => {
-                  const isStreamingThis = isLoading && message.role === "assistant" && index === messages.length - 1;
-                  const { body, suggestions } = message.role === "assistant" && !isStreamingThis
-                    ? parseSuggestions(message.content)
-                    : { body: message.content, suggestions: [] };
-                  return (
-                    <>
-                      <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                        {body}
-                        {isStreamingThis && message.content === "" && (
-                          <span className="inline-block animate-pulse">
-                            考えています...
-                          </span>
-                        )}
-                      </div>
-                      {suggestions.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {suggestions.map((s) => (
-                            <button
-                              key={s}
-                              onClick={() => sendChat(s)}
-                              className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-700 transition-colors hover:border-zinc-300 hover:bg-zinc-100"
-                            >
-                              {s}
-                            </button>
-                          ))}
-                        </div>
+                ) : (
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {message.role === "assistant"
+                      ? parseSuggestions(message.content).body
+                      : message.content}
+                    {isLoading &&
+                      message.role === "assistant" &&
+                      index === messages.length - 1 &&
+                      message.content === "" && (
+                        <span className="inline-block animate-pulse">
+                          考えています...
+                        </span>
                       )}
-                    </>
-                  );
-                })()}
+                  </div>
+                )}
                 {message.role === "assistant" &&
                   message.content &&
                   !(isLoading && index === messages.length - 1) && (
@@ -438,40 +422,60 @@ export default function Chat() {
             </div>
           ))}
 
-          {/* Post-evaluation follow-up */}
-          {!isLoading &&
-            messages.length > 0 &&
-            messages[messages.length - 1]?.type === "evaluation" &&
-            messages[messages.length - 1]?.role === "assistant" &&
-            messages[messages.length - 1]?.content !== "" && (
-              <div className="flex justify-start">
-                <div className="max-w-[85%] rounded-2xl border border-zinc-100 bg-white px-4 py-3 shadow-sm">
-                  <div className="mb-1 text-xs font-semibold text-zinc-500">
-                    川崎裕一
-                  </div>
-                  <div className="mb-3 text-sm leading-relaxed text-zinc-800">
-                    評価結果について、もう少し詳しくお話しできます。気になる点はありますか？
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {getFollowUpSuggestions(
-                      messages[messages.length - 1].content
-                    ).map((suggestion) => (
-                      <button
-                        key={suggestion}
-                        onClick={() => switchToChat(suggestion)}
-                        className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-700 transition-colors hover:border-zinc-300 hover:bg-zinc-100"
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
           <div ref={messagesEndRef} />
         </div>
       </div>
+
+      {/* Suggestions */}
+      {(() => {
+        if (isLoading || messages.length === 0) return null;
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg.role !== "assistant" || !lastMsg.content) return null;
+
+        // Chat suggestions from response
+        if (lastMsg.type !== "evaluation") {
+          const { suggestions } = parseSuggestions(lastMsg.content);
+          if (suggestions.length === 0) return null;
+          return (
+            <div className="border-t border-zinc-100 bg-zinc-50 px-4 py-3">
+              <div className="mx-auto flex max-w-3xl flex-wrap gap-2">
+                {suggestions.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => sendChat(s)}
+                    className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-100"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        // Evaluation follow-up suggestions
+        const evalSuggestions = getFollowUpSuggestions(lastMsg.content);
+        return (
+          <div className="border-t border-zinc-100 bg-zinc-50 px-4 py-3">
+            <div className="mx-auto max-w-3xl">
+              <p className="mb-2 text-xs text-zinc-500">
+                評価結果について詳しく相談できます
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {evalSuggestions.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => switchToChat(s)}
+                    className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-100"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Input */}
       <div className="border-t border-zinc-200 bg-white px-4 py-4">

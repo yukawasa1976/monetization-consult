@@ -22,7 +22,7 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [mode, setMode] = useState<Mode>("chat");
+  const [mode, setMode] = useState<Mode | null>(null);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesRef = useRef<Message[]>([]);
@@ -293,12 +293,14 @@ export default function Chat() {
             <p className="text-sm text-zinc-500">
               {mode === "chat"
                 ? "インターネットサービスの収益化について相談できます"
-                : "事業計画評価モード"}
+                : mode === "evaluate"
+                  ? "事業計画評価モード"
+                  : "インターネットサービスの収益化について相談できます"}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <AuthButton />
-            {mode === "chat" ? (
+            {mode === "chat" && (
               <button
                 onClick={switchToEvaluate}
                 disabled={isLoading}
@@ -306,7 +308,8 @@ export default function Chat() {
               >
                 事業計画を評価する
               </button>
-            ) : (
+            )}
+            {mode === "evaluate" && (
               <button
                 onClick={() => switchToChat()}
                 disabled={isLoading}
@@ -322,15 +325,48 @@ export default function Chat() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="mx-auto max-w-3xl space-y-6">
-          {messages.length === 0 && mode === "chat" && (
+          {messages.length === 0 && mode === null && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="mb-4 text-4xl">💬</div>
               <h2 className="mb-2 text-xl font-semibold text-zinc-800">
-                マネタイズの相談をしてみましょう
+                川崎裕一のマネタイズ相談
               </h2>
-              <p className="mb-8 max-w-md text-sm text-zinc-500">
+              <p className="mb-10 max-w-md text-sm text-zinc-500">
                 サービスの収益化、価格設計、ビジネスモデルなど、
                 マネタイズに関することなら何でもご相談ください。
+              </p>
+              <div className="grid w-full max-w-lg gap-4 sm:grid-cols-2">
+                <button
+                  onClick={() => setMode("chat")}
+                  className="group rounded-2xl border border-zinc-200 bg-white p-6 text-left transition-all hover:border-zinc-300 hover:shadow-md"
+                >
+                  <div className="mb-3 text-3xl">💬</div>
+                  <h3 className="mb-2 text-base font-semibold text-zinc-900">
+                    相談する
+                  </h3>
+                  <p className="text-sm leading-relaxed text-zinc-500">
+                    マネタイズの悩みをチャットで相談。価格設計、ビジネスモデル、収益化戦略など。
+                  </p>
+                </button>
+                <button
+                  onClick={() => setMode("evaluate")}
+                  className="group rounded-2xl border border-zinc-200 bg-white p-6 text-left transition-all hover:border-zinc-300 hover:shadow-md"
+                >
+                  <div className="mb-3 text-3xl">📊</div>
+                  <h3 className="mb-2 text-base font-semibold text-zinc-900">
+                    事業計画を評価する
+                  </h3>
+                  <p className="text-sm leading-relaxed text-zinc-500">
+                    5つの軸で100点満点のスコア評価。具体的な改善アドバイスを提供します。
+                  </p>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {messages.length === 0 && mode === "chat" && (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <p className="mb-6 text-sm text-zinc-500">
+                質問を入力するか、テーマを選んでください
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {[
@@ -355,14 +391,9 @@ export default function Chat() {
           )}
 
           {messages.length === 0 && mode === "evaluate" && (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="mb-4 text-4xl">📊</div>
-              <h2 className="mb-2 text-xl font-semibold text-zinc-800">
-                事業計画を評価します
-              </h2>
+            <div className="flex flex-col items-center justify-center py-16 text-center">
               <p className="mb-4 max-w-md text-sm text-zinc-500">
                 事業計画のテキストを貼り付けるか、ファイルをアップロードしてください。
-                5つの軸で100点満点のスコアをつけて、改善アドバイスを提供します。
               </p>
               <div className="grid grid-cols-5 gap-2 text-center text-xs text-zinc-500">
                 {["売り物", "値付け", "売る人", "売れる仕組み", "売上管理"].map(
@@ -492,6 +523,7 @@ export default function Chat() {
       })()}
 
       {/* Input */}
+      {mode !== null && (
       <div className="border-t border-zinc-200 bg-white px-4 py-4">
         {isLimitReached ? (
           <div className="mx-auto max-w-3xl text-center">
@@ -567,6 +599,7 @@ export default function Chat() {
           </>
         )}
       </div>
+      )}
     </div>
   );
 }

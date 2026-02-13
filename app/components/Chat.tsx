@@ -442,7 +442,7 @@ export default function Chat() {
 
       {/* Suggestions */}
       {(() => {
-        if (isLoading || messages.length === 0) return null;
+        if (isLoading || messages.length === 0 || isLimitReached) return null;
         const lastMsg = messages[messages.length - 1];
         if (lastMsg.role !== "assistant" || !lastMsg.content) return null;
 

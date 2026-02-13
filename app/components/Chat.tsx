@@ -8,6 +8,8 @@ import CopyButton from "./CopyButton";
 import AuthButton from "./AuthButton";
 
 const FREE_MESSAGE_LIMIT = 3;
+const CONSULTATION_CTA_AFTER = 3; // 3往復後に直接相談の導線を表示
+const BOOKING_URL = "https://calendar.app.google/fSHsa6akJZh5Brwu9";
 
 type Message = {
   role: "user" | "assistant";
@@ -411,61 +413,95 @@ export default function Chat() {
             </div>
           )}
 
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`rounded-2xl px-4 py-3 ${
-                  message.role === "user"
-                    ? "max-w-[85%] bg-zinc-900 text-white"
-                    : message.type === "evaluation"
-                      ? "w-full bg-white text-zinc-800 shadow-sm border border-zinc-100"
-                      : "max-w-[85%] bg-white text-zinc-800 shadow-sm border border-zinc-100"
-                }`}
-              >
-                {message.role === "assistant" && (
-                  <div className="mb-1 text-xs font-semibold text-zinc-500">
-                    川崎裕一
-                    {message.type === "evaluation" && (
-                      <span className="ml-2 rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-400">
-                        事業計画評価
-                      </span>
+          {messages.map((message, index) => {
+            // このメッセージまでのアシスタント回答数をカウント
+            const assistantCountUpToHere = messages
+              .slice(0, index + 1)
+              .filter((m) => m.role === "assistant").length;
+            const showCtaAfterThis =
+              message.role === "assistant" &&
+              !isLoading &&
+              message.content &&
+              (message.type === "evaluation" ||
+                assistantCountUpToHere === CONSULTATION_CTA_AFTER);
+
+            return (
+              <div key={index}>
+                <div
+                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`rounded-2xl px-4 py-3 ${
+                      message.role === "user"
+                        ? "max-w-[85%] bg-zinc-900 text-white"
+                        : message.type === "evaluation"
+                          ? "w-full bg-white text-zinc-800 shadow-sm border border-zinc-100"
+                          : "max-w-[85%] bg-white text-zinc-800 shadow-sm border border-zinc-100"
+                    }`}
+                  >
+                    {message.role === "assistant" && (
+                      <div className="mb-1 text-xs font-semibold text-zinc-500">
+                        川崎裕一
+                        {message.type === "evaluation" && (
+                          <span className="ml-2 rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-400">
+                            事業計画評価
+                          </span>
+                        )}
+                      </div>
                     )}
-                  </div>
-                )}
-                {message.role === "assistant" &&
-                message.type === "evaluation" ? (
-                  <EvaluationResult
-                    content={message.content}
-                    isStreaming={isLoading && index === messages.length - 1}
-                  />
-                ) : (
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {message.role === "assistant"
-                      ? parseSuggestions(message.content).body
-                      : message.content}
-                    {isLoading &&
-                      message.role === "assistant" &&
-                      index === messages.length - 1 &&
-                      message.content === "" && (
-                        <span className="inline-block animate-pulse">
-                          考えています...
-                        </span>
+                    {message.role === "assistant" &&
+                    message.type === "evaluation" ? (
+                      <EvaluationResult
+                        content={message.content}
+                        isStreaming={isLoading && index === messages.length - 1}
+                      />
+                    ) : (
+                      <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                        {message.role === "assistant"
+                          ? parseSuggestions(message.content).body
+                          : message.content}
+                        {isLoading &&
+                          message.role === "assistant" &&
+                          index === messages.length - 1 &&
+                          message.content === "" && (
+                            <span className="inline-block animate-pulse">
+                              考えています...
+                            </span>
+                          )}
+                      </div>
+                    )}
+                    {message.role === "assistant" &&
+                      message.content &&
+                      !(isLoading && index === messages.length - 1) && (
+                        <div className="mt-2 flex justify-end">
+                          <CopyButton text={parseSuggestions(message.content).body} />
+                        </div>
                       )}
                   </div>
+                </div>
+                {showCtaAfterThis && (
+                  <div className="my-4 rounded-2xl border border-zinc-200 bg-gradient-to-r from-zinc-50 to-white p-5 text-center">
+                    <p className="mb-3 text-sm text-zinc-600">
+                      {message.type === "evaluation"
+                        ? "この評価結果をもとに、より具体的な改善策を一緒に考えませんか？"
+                        : "より深い相談は、直接お話しするとさらに具体的なアドバイスができます。"}
+                    </p>
+                    <a
+                      href={BOOKING_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
+                    >
+                      川崎裕一に直接相談する
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                        <path fillRule="evenodd" d="M5.22 14.78a.75.75 0 0 0 1.06 0l7.22-7.22v5.69a.75.75 0 0 0 1.5 0v-7.5a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0 0 1.5h5.69l-7.22 7.22a.75.75 0 0 0 0 1.06Z" clipRule="evenodd" />
+                      </svg>
+                    </a>
+                  </div>
                 )}
-                {message.role === "assistant" &&
-                  message.content &&
-                  !(isLoading && index === messages.length - 1) && (
-                    <div className="mt-2 flex justify-end">
-                      <CopyButton text={parseSuggestions(message.content).body} />
-                    </div>
-                  )}
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           <div ref={messagesEndRef} />
         </div>

@@ -6,10 +6,10 @@ import FileUpload from "./FileUpload";
 import EvaluationResult from "./EvaluationResult";
 import CopyButton from "./CopyButton";
 import AuthButton from "./AuthButton";
+import ConsultationForm from "./ConsultationForm";
 
 const FREE_MESSAGE_LIMIT = 3;
 const CONSULTATION_CTA_AFTER = 3; // 3往復後に直接相談の導線を表示
-const BOOKING_URL = "https://calendar.app.google/fSHsa6akJZh5Brwu9";
 
 type Message = {
   role: "user" | "assistant";
@@ -30,6 +30,8 @@ export default function Chat() {
   const messagesRef = useRef<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const [showConsultationForm, setShowConsultationForm] = useState(false);
 
   const userMessageCount = messages.filter((m) => m.role === "user").length;
   const isLimitReached = !session?.user && userMessageCount >= FREE_MESSAGE_LIMIT;
@@ -486,17 +488,12 @@ export default function Chat() {
                         ? "この評価結果をもとに、より具体的な改善策を一緒に考えませんか？"
                         : "より深い相談は、直接お話しするとさらに具体的なアドバイスができます。"}
                     </p>
-                    <a
-                      href={BOOKING_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      onClick={() => setShowConsultationForm(true)}
                       className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
                     >
                       川崎裕一に直接相談する
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                        <path fillRule="evenodd" d="M5.22 14.78a.75.75 0 0 0 1.06 0l7.22-7.22v5.69a.75.75 0 0 0 1.5 0v-7.5a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0 0 1.5h5.69l-7.22 7.22a.75.75 0 0 0 0 1.06Z" clipRule="evenodd" />
-                      </svg>
-                    </a>
+                    </button>
                   </div>
                 )}
               </div>
@@ -635,6 +632,9 @@ export default function Chat() {
           </>
         )}
       </div>
+      )}
+      {showConsultationForm && (
+        <ConsultationForm onClose={() => setShowConsultationForm(false)} />
       )}
     </div>
   );

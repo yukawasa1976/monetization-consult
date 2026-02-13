@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import FileUpload from "./FileUpload";
 import EvaluationResult from "./EvaluationResult";
 import CopyButton from "./CopyButton";
+import AuthButton from "./AuthButton";
 
 type Message = {
   role: "user" | "assistant";
@@ -19,6 +20,7 @@ export default function Chat() {
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<Mode>("chat");
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesRef = useRef<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -78,6 +80,10 @@ export default function Chat() {
         try {
           const parsed = JSON.parse(data);
           if (parsed.type === "evaluation_start") continue;
+          if (parsed.sessionId) {
+            setSessionId(parsed.sessionId);
+            continue;
+          }
           if (parsed.text) {
             assistantContent += parsed.text;
             const updated = [
@@ -117,7 +123,7 @@ export default function Chat() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: apiMessages }),
+        body: JSON.stringify({ messages: apiMessages, sessionId }),
       });
 
       if (!response.ok) throw new Error(`API error: ${response.status}`);
@@ -283,7 +289,8 @@ export default function Chat() {
                 : "事業計画評価モード"}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <AuthButton />
             {mode === "chat" ? (
               <button
                 onClick={switchToEvaluate}

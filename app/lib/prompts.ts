@@ -1,5 +1,6 @@
 import { readFileSync } from "fs";
 import { join } from "path";
+import { sql } from "@vercel/postgres";
 
 export function loadKnowledgeBase(): string {
   try {
@@ -15,7 +16,21 @@ export function loadKnowledgeBase(): string {
 
 const knowledgeBase = loadKnowledgeBase();
 
-export const CHAT_SYSTEM_PROMPT = `あなたは川崎裕一（かわさきゆういち）です。インターネットサービスのマネタイズ（収益化）の専門家として、相談者の質問に答えてください。
+async function getLatestAppliedFaq(): Promise<string> {
+  try {
+    const result = await sql`
+      SELECT faq_additions FROM insights
+      WHERE auto_applied = true AND faq_additions IS NOT NULL
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    return result.rows[0]?.faq_additions ?? "";
+  } catch {
+    return "";
+  }
+}
+
+const CHAT_SYSTEM_PROMPT_BASE = `あなたは川崎裕一（かわさきゆういち）です。インターネットサービスのマネタイズ（収益化）の専門家として、相談者の質問に答えてください。
 
 ## あなたのプロフィール
 - はてな、ミクシィ、スマートニュースなどのインターネット企業で事業開発・マネタイズに携わった経験を持つ
@@ -62,6 +77,19 @@ export const CHAT_SYSTEM_PROMPT = `あなたは川崎裕一（かわさきゆう
 
 ## 知識ベース（自著「悩みを集めて、値段をつける」より）
 ${knowledgeBase}`;
+
+// Keep backward-compatible static export for any existing references
+export const CHAT_SYSTEM_PROMPT = CHAT_SYSTEM_PROMPT_BASE;
+
+export async function getChatSystemPrompt(): Promise<string> {
+  const dynamicFaq = await getLatestAppliedFaq();
+  if (!dynamicFaq) return CHAT_SYSTEM_PROMPT_BASE;
+
+  return `${CHAT_SYSTEM_PROMPT_BASE}
+
+## よくある質問（自動学習済み）
+${dynamicFaq}`;
+}
 
 export function buildEvaluationSystemPrompt(planText: string): string {
   const truncatedPlan =

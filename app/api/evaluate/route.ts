@@ -1,7 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 import { buildEvaluationSystemPrompt } from "@/app/lib/prompts";
-import { checkRateLimit, evalLimiter } from "@/app/lib/rate-limit";
+import { checkRateLimit, evalLimiter, authedEvalLimiter } from "@/app/lib/rate-limit";
+import { createSession, logEvaluation } from "@/app/lib/db";
+import { parseAllScores } from "@/app/lib/parse-scores";
+import { waitUntil } from "@vercel/functions";
+import { auth } from "@/auth";
 
 const anthropic = new Anthropic();
 
@@ -33,11 +37,15 @@ async function extractPlanText(request: NextRequest): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
-    const rateLimit = await checkRateLimit(request, evalLimiter);
+    const session = await auth();
+    const userId = session?.user?.id ?? null;
+
+    const limiter = userId ? authedEvalLimiter : evalLimiter;
+    const rateLimit = await checkRateLimit(request, limiter, userId);
     if (!rateLimit.success) {
       return new Response(
         JSON.stringify({
-          error: "1日の評価上限（5回）に達しました。明日またお試しください。",
+          error: "1日の評価上限に達しました。明日またお試しください。",
         }),
         { status: 429, headers: { "Content-Type": "application/json" } }
       );
@@ -45,6 +53,16 @@ export async function POST(request: NextRequest) {
 
     const planText = await extractPlanText(request);
     const systemPrompt = buildEvaluationSystemPrompt(planText);
+
+    // Create session for logging
+    let sessionId: string | null = null;
+    try {
+      const ip = request.headers.get("x-forwarded-for")?.split(",")[0] ?? null;
+      const userAgent = request.headers.get("user-agent") ?? null;
+      sessionId = await createSession(ip, userAgent, "evaluate", userId);
+    } catch (e) {
+      console.error("Failed to create session:", e);
+    }
 
     let fullResponse = "";
     const stream = anthropic.messages.stream({
@@ -84,22 +102,31 @@ export async function POST(request: NextRequest) {
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
 
-          // Fire-and-forget email notification
-          const scoreMatch = fullResponse.match(
-            /【総合スコア:\s*(\d+)\/100】/
-          );
-          if (scoreMatch) {
-            const score = parseInt(scoreMatch[1], 10);
-            if (score > 80) {
-              const { sendHighScoreNotification } = await import("@/app/lib/email");
+          // Log after response completes (survives serverless shutdown)
+          const scores = parseAllScores(fullResponse);
+          const afterTasks: Promise<unknown>[] = [];
+
+          if (scores.total !== null && scores.total > 80) {
+            const { sendHighScoreNotification } = await import("@/app/lib/email");
+            afterTasks.push(
               sendHighScoreNotification(
-                score,
+                scores.total,
                 planText.slice(0, 500),
                 fullResponse
-              ).catch((err) =>
-                console.error("Email notification failed:", err)
-              );
-            }
+              ).catch((err) => console.error("Email notification failed:", err))
+            );
+          }
+
+          if (sessionId) {
+            afterTasks.push(
+              logEvaluation(sessionId, planText, scores, fullResponse).catch(
+                (err) => console.error("Evaluation logging failed:", err)
+              )
+            );
+          }
+
+          if (afterTasks.length > 0) {
+            waitUntil(Promise.all(afterTasks));
           }
         } catch (error) {
           const message =

@@ -8,7 +8,6 @@ import EvaluationResult from "./EvaluationResult";
 import CopyButton from "./CopyButton";
 import AuthButton from "./AuthButton";
 import ConsultationForm from "./ConsultationForm";
-import FeedbackButton from "./FeedbackButton";
 
 const FREE_MESSAGE_LIMIT = 3;
 const CONSULTATION_CTA_AFTER = 3; // 3往復後に直接相談の導線を表示
@@ -30,6 +29,11 @@ export default function Chat() {
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [conversationCopied, setConversationCopied] = useState(false);
+  const [showFeedbackInline, setShowFeedbackInline] = useState(false);
+  const [feedbackCategory, setFeedbackCategory] = useState<"bug" | "improvement" | "other">("improvement");
+  const [feedbackContent, setFeedbackContent] = useState("");
+  const [feedbackSending, setFeedbackSending] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState(false);
   const messagesRef = useRef<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -327,6 +331,31 @@ export default function Chat() {
     setTimeout(() => setConversationCopied(false), 2000);
   };
 
+  const submitFeedback = async () => {
+    if (!feedbackContent.trim()) return;
+    setFeedbackSending(true);
+    try {
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: feedbackCategory, content: feedbackContent.trim(), sessionId }),
+      });
+      if (!res.ok) throw new Error();
+      setFeedbackSent(true);
+    } catch {
+      alert("送信に失敗しました。もう一度お試しください。");
+    } finally {
+      setFeedbackSending(false);
+    }
+  };
+
+  const resetFeedback = () => {
+    setShowFeedbackInline(false);
+    setFeedbackContent("");
+    setFeedbackCategory("improvement");
+    setFeedbackSent(false);
+  };
+
   const parseSuggestions = (content: string): { body: string; suggestions: string[] } => {
     const match = content.match(/\n*【次の質問候補】\n([\s\S]*?)$/);
     if (!match) return { body: content, suggestions: [] };
@@ -356,6 +385,12 @@ export default function Chat() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFeedbackInline(true)}
+              className="text-xs text-zinc-400 transition-colors hover:text-zinc-600"
+            >
+              ご意見・ご要望
+            </button>
             <AuthButton />
             {mode === "chat" && (
               <button
@@ -550,60 +585,70 @@ export default function Chat() {
             );
           })}
 
+          {/* Suggestions (inside scroll area) */}
+          {(() => {
+            if (isLoading || messages.length === 0 || isLimitReached) return null;
+            const lastMsg = messages[messages.length - 1];
+            if (lastMsg.role !== "assistant" || !lastMsg.content) return null;
+
+            if (lastMsg.type !== "evaluation") {
+              const { suggestions } = parseSuggestions(lastMsg.content);
+              if (suggestions.length === 0) return null;
+              return (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {suggestions.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => sendChat(s)}
+                      className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-100"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              );
+            }
+
+            const evalSuggestions = getFollowUpSuggestions(lastMsg.content);
+            return (
+              <div className="mt-4">
+                <p className="mb-2 text-xs text-zinc-500">
+                  評価結果について詳しく相談できます
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {evalSuggestions.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => switchToChat(s)}
+                      className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-100"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Feedback CTA at conversation breakpoints */}
+          {!isLoading && messages.length > 0 && !showFeedbackInline && !feedbackSent && (() => {
+            const assistantCount = messages.filter((m) => m.role === "assistant").length;
+            if (assistantCount < 2) return null;
+            return (
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => setShowFeedbackInline(true)}
+                  className="text-xs text-zinc-400 transition-colors hover:text-zinc-600"
+                >
+                  このサービスへのご意見・ご要望はありますか？
+                </button>
+              </div>
+            );
+          })()}
+
           <div ref={messagesEndRef} />
         </div>
       </div>
-
-      {/* Suggestions */}
-      {(() => {
-        if (isLoading || messages.length === 0 || isLimitReached) return null;
-        const lastMsg = messages[messages.length - 1];
-        if (lastMsg.role !== "assistant" || !lastMsg.content) return null;
-
-        // Chat suggestions from response
-        if (lastMsg.type !== "evaluation") {
-          const { suggestions } = parseSuggestions(lastMsg.content);
-          if (suggestions.length === 0) return null;
-          return (
-            <div className="border-t border-zinc-100 bg-zinc-50 px-4 py-3">
-              <div className="mx-auto flex max-w-3xl flex-wrap gap-2">
-                {suggestions.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => sendChat(s)}
-                    className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-100"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-          );
-        }
-
-        // Evaluation follow-up suggestions
-        const evalSuggestions = getFollowUpSuggestions(lastMsg.content);
-        return (
-          <div className="border-t border-zinc-100 bg-zinc-50 px-4 py-3">
-            <div className="mx-auto max-w-3xl">
-              <p className="mb-2 text-xs text-zinc-500">
-                評価結果について詳しく相談できます
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {evalSuggestions.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => switchToChat(s)}
-                    className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-100"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Copy conversation banner for non-logged-in users */}
       {!session?.user && messages.length > 0 && !isLoading && (
@@ -720,7 +765,78 @@ export default function Chat() {
       {showConsultationForm && (
         <ConsultationForm onClose={() => setShowConsultationForm(false)} />
       )}
-      <FeedbackButton sessionId={sessionId} />
+      {showFeedbackInline && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 sm:items-center">
+          <div className="mb-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:mb-0">
+            {feedbackSent ? (
+              <div className="text-center">
+                <div className="mb-3 text-3xl">&#x2705;</div>
+                <h3 className="mb-2 text-lg font-semibold text-zinc-900">
+                  送信しました！
+                </h3>
+                <p className="mb-5 text-sm text-zinc-500">
+                  フィードバックありがとうございます。改善に活かします。
+                </p>
+                <button
+                  onClick={resetFeedback}
+                  className="rounded-xl bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
+                >
+                  閉じる
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-base font-semibold text-zinc-900">
+                    ご意見・ご要望
+                  </h3>
+                  <button
+                    onClick={resetFeedback}
+                    className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                      <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="mb-4 flex gap-2">
+                  {([
+                    { value: "bug" as const, label: "バグ" },
+                    { value: "improvement" as const, label: "改善要望" },
+                    { value: "other" as const, label: "その他" },
+                  ]).map((cat) => (
+                    <button
+                      key={cat.value}
+                      onClick={() => setFeedbackCategory(cat.value)}
+                      className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                        feedbackCategory === cat.value
+                          ? "bg-zinc-900 text-white"
+                          : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  value={feedbackContent}
+                  onChange={(e) => setFeedbackContent(e.target.value)}
+                  placeholder="気になった点や要望を教えてください..."
+                  rows={4}
+                  className="mb-4 w-full resize-none rounded-xl border border-zinc-300 px-4 py-3 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none"
+                />
+                <button
+                  onClick={submitFeedback}
+                  disabled={!feedbackContent.trim() || feedbackSending}
+                  className="w-full rounded-xl bg-zinc-900 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-40"
+                >
+                  {feedbackSending ? "送信中..." : "送信する"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

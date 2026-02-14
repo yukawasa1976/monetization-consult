@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
 import FileUpload from "./FileUpload";
 import EvaluationResult from "./EvaluationResult";
@@ -31,7 +32,17 @@ export default function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const searchParams = useSearchParams();
   const [showConsultationForm, setShowConsultationForm] = useState(false);
+
+  // ログイン後に ?consultation=true があればフォームを自動表示
+  useEffect(() => {
+    if (searchParams.get("consultation") === "true" && session?.user) {
+      setShowConsultationForm(true);
+      // URLからパラメータを消す
+      window.history.replaceState({}, "", "/");
+    }
+  }, [searchParams, session]);
 
   const userMessageCount = messages.filter((m) => m.role === "user").length;
   const isLimitReached = !session?.user && userMessageCount >= FREE_MESSAGE_LIMIT;

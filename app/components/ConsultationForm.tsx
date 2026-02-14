@@ -25,7 +25,7 @@ export default function ConsultationForm({ onClose }: { onClose: () => void }) {
             相談のお申し込みにはGoogleアカウントでのログインが必要です。
           </p>
           <button
-            onClick={() => signIn("google")}
+            onClick={() => signIn("google", { callbackUrl: "/?consultation=true" })}
             className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
           >
             Googleでログイン

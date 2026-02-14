@@ -392,10 +392,7 @@ export default function Chat() {
                 ].map((suggestion) => (
                   <button
                     key={suggestion}
-                    onClick={() => {
-                      setInput(suggestion);
-                      textareaRef.current?.focus();
-                    }}
+                    onClick={() => sendChat(suggestion)}
                     className="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-left text-sm text-zinc-700 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
                   >
                     {suggestion}

@@ -40,9 +40,33 @@ export default function Chat() {
   useEffect(() => {
     if (searchParams.get("consultation") === "true" && session?.user) {
       setShowConsultationForm(true);
-      // URLからパラメータを消す
       window.history.replaceState({}, "", "/");
     }
+  }, [searchParams, session]);
+
+  // ?session=xxx で過去の会話を復元
+  useEffect(() => {
+    const resumeSessionId = searchParams.get("session");
+    if (!resumeSessionId || !session?.user) return;
+
+    fetch(`/api/sessions/${resumeSessionId}/messages`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.messages && data.messages.length > 0) {
+          const loaded = data.messages.map((m: { role: string; content: string }) => ({
+            role: m.role as "user" | "assistant",
+            content: m.content,
+            type: "chat" as const,
+          }));
+          setMessages(loaded);
+          messagesRef.current = loaded;
+          setSessionId(resumeSessionId);
+          setMode("chat");
+        }
+      })
+      .catch((err) => console.error("Failed to load session:", err));
+
+    window.history.replaceState({}, "", "/");
   }, [searchParams, session]);
 
   const userMessageCount = messages.filter((m) => m.role === "user").length;

@@ -46,12 +46,20 @@ export default async function SessionDetailPage({
   return (
     <div className="px-4 py-8">
       <div className="mx-auto max-w-3xl">
-        <Link
-          href="/mypage"
-          className="mb-6 inline-block text-sm text-zinc-500 transition-colors hover:text-zinc-700"
-        >
-          ← マイページに戻る
-        </Link>
+        <div className="mb-6 flex items-center justify-between">
+          <Link
+            href="/mypage"
+            className="text-sm text-zinc-500 transition-colors hover:text-zinc-700"
+          >
+            ← マイページに戻る
+          </Link>
+          <Link
+            href={`/?session=${id}`}
+            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
+          >
+            この会話を続ける
+          </Link>
+        </div>
 
         <div className="space-y-4">
           {messages.map((msg) => (

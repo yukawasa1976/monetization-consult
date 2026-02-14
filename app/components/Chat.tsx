@@ -28,6 +28,7 @@ export default function Chat() {
   const [mode, setMode] = useState<Mode | null>(null);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [conversationCopied, setConversationCopied] = useState(false);
   const messagesRef = useRef<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -283,6 +284,22 @@ export default function Chat() {
 
   const switchToEvaluate = () => {
     setMode("evaluate");
+  };
+
+  const copyConversation = async () => {
+    const text = messages
+      .map((m) => {
+        const prefix = m.role === "user" ? "あなた" : "川崎裕一";
+        const content =
+          m.role === "assistant"
+            ? parseSuggestions(m.content).body
+            : m.content;
+        return `${prefix}:\n${content}`;
+      })
+      .join("\n\n---\n\n");
+    await navigator.clipboard.writeText(text);
+    setConversationCopied(true);
+    setTimeout(() => setConversationCopied(false), 2000);
   };
 
   const parseSuggestions = (content: string): { body: string; suggestions: string[] } => {
@@ -562,6 +579,38 @@ export default function Chat() {
           </div>
         );
       })()}
+
+      {/* Copy conversation banner for non-logged-in users */}
+      {!session?.user && messages.length > 0 && !isLoading && (
+        <div className="border-t border-zinc-100 bg-amber-50/80 px-4 py-2.5">
+          <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+            <p className="text-xs text-amber-700">
+              会話内容はログインしないと保存されません。保存したい場合はコピーしておいてください。
+            </p>
+            <button
+              onClick={copyConversation}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-50"
+            >
+              {conversationCopied ? (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-emerald-500">
+                    <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
+                  </svg>
+                  コピーしました
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                    <path d="M7 3.5A1.5 1.5 0 0 1 8.5 2h3.879a1.5 1.5 0 0 1 1.06.44l3.122 3.12A1.5 1.5 0 0 1 17 6.622V12.5a1.5 1.5 0 0 1-1.5 1.5h-1v-3.379a3 3 0 0 0-.879-2.121L10.5 5.379A3 3 0 0 0 8.379 4.5H7v-1Z" />
+                    <path d="M4.5 6A1.5 1.5 0 0 0 3 7.5v9A1.5 1.5 0 0 0 4.5 18h7a1.5 1.5 0 0 0 1.5-1.5v-5.879a1.5 1.5 0 0 0-.44-1.06L9.44 6.439A1.5 1.5 0 0 0 8.378 6H4.5Z" />
+                  </svg>
+                  会話をコピー
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Input */}
       {mode !== null && (

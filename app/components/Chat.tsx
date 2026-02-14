@@ -8,6 +8,7 @@ import EvaluationResult from "./EvaluationResult";
 import CopyButton from "./CopyButton";
 import AuthButton from "./AuthButton";
 import ConsultationForm from "./ConsultationForm";
+import FeedbackButton from "./FeedbackButton";
 
 const FREE_MESSAGE_LIMIT = 3;
 const CONSULTATION_CTA_AFTER = 3; // 3往復後に直接相談の導線を表示
@@ -719,6 +720,7 @@ export default function Chat() {
       {showConsultationForm && (
         <ConsultationForm onClose={() => setShowConsultationForm(false)} />
       )}
+      <FeedbackButton sessionId={sessionId} />
     </div>
   );
 }

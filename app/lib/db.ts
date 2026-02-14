@@ -102,6 +102,33 @@ export async function getSessionMessages(sessionId: string, userId: string) {
   return result.rows;
 }
 
+// --- フィードバック ---
+
+export async function saveFeedback(
+  category: string,
+  content: string,
+  userId: string | null,
+  sessionId: string | null
+): Promise<void> {
+  await sql`
+    INSERT INTO feedbacks (category, content, user_id, session_id)
+    VALUES (${category}, ${content}, ${userId}, ${sessionId})
+  `;
+}
+
+export async function getFeedbacks(limit = 50, offset = 0) {
+  const result = await sql`
+    SELECT
+      f.id, f.category, f.content, f.created_at,
+      u.name as user_name, u.email as user_email
+    FROM feedbacks f
+    LEFT JOIN auth_users u ON u.id = f.user_id
+    ORDER BY f.created_at DESC
+    LIMIT ${limit} OFFSET ${offset}
+  `;
+  return result.rows;
+}
+
 export async function getUserSessionCount(userId: string): Promise<number> {
   const result = await sql`
     SELECT COUNT(*)::int as count FROM sessions WHERE user_id = ${userId}

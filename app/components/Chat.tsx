@@ -11,6 +11,7 @@ import ConsultationForm from "./ConsultationForm";
 
 const FREE_MESSAGE_LIMIT = 3;
 const CONSULTATION_CTA_AFTER = 3; // 3往復後に直接相談の導線を表示
+const STORAGE_KEY = "monetize_pending_messages";
 
 type Message = {
   role: "user" | "assistant";
@@ -34,6 +35,8 @@ export default function Chat() {
   const [feedbackContent, setFeedbackContent] = useState("");
   const [feedbackSending, setFeedbackSending] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState(false);
+  const [truncationWarning, setTruncationWarning] = useState(false);
+  const [lastUserInput, setLastUserInput] = useState<{ text: string; file: File | null } | null>(null);
   const messagesRef = useRef<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -71,6 +74,41 @@ export default function Chat() {
       })
       .catch((err) => console.error("Failed to load session:", err));
 
+    window.history.replaceState({}, "", "/");
+  }, [searchParams, session]);
+
+  // 未ログイン時: メッセージをlocalStorageに保存
+  useEffect(() => {
+    if (session?.user) return; // ログイン済みなら保存しない
+    if (messages.length === 0) return;
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ messages, mode })
+      );
+    } catch {
+      // localStorage full or unavailable
+    }
+  }, [messages, mode, session]);
+
+  // ログイン後に ?restore=true があればlocalStorageから復元
+  useEffect(() => {
+    if (searchParams.get("restore") !== "true" || !session?.user) return;
+
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const { messages: savedMessages, mode: savedMode } = JSON.parse(saved);
+        if (savedMessages && savedMessages.length > 0) {
+          setMessages(savedMessages);
+          messagesRef.current = savedMessages;
+          if (savedMode) setMode(savedMode);
+        }
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch {
+      // ignore parse errors
+    }
     window.history.replaceState({}, "", "/");
   }, [searchParams, session]);
 
@@ -132,6 +170,10 @@ export default function Chat() {
         try {
           const parsed = JSON.parse(data);
           if (parsed.type === "evaluation_start") continue;
+          if (parsed.type === "truncation_warning") {
+            setTruncationWarning(true);
+            continue;
+          }
           if (parsed.sessionId) {
             setSessionId(parsed.sessionId);
             continue;
@@ -160,6 +202,8 @@ export default function Chat() {
     const trimmed = (directText ?? input).trim();
     if (!trimmed || isLoading) return;
 
+    setLastUserInput({ text: trimmed, file: null });
+    setTruncationWarning(false);
     const userMessage: Message = { role: "user", content: trimmed, type: "chat" };
     const newMessages = [...messagesRef.current, userMessage];
     setMessages(newMessages);
@@ -197,12 +241,15 @@ export default function Chat() {
     }
   };
 
-  const sendEvaluation = async () => {
+  const sendEvaluation = async (retryFile?: File | null) => {
     if (isLoading) return;
-    if (!input.trim() && !attachedFile) return;
+    const fileToUse = retryFile !== undefined ? retryFile : attachedFile;
+    if (!input.trim() && !fileToUse) return;
 
-    const displayContent = attachedFile
-      ? `📎 ${attachedFile.name} をアップロードしました`
+    setLastUserInput({ text: input.trim(), file: fileToUse });
+    setTruncationWarning(false);
+    const displayContent = fileToUse
+      ? `📎 ${fileToUse.name} をアップロードしました`
       : input.trim();
 
     const userMessage: Message = {
@@ -219,9 +266,9 @@ export default function Chat() {
     try {
       let response: Response;
 
-      if (attachedFile) {
+      if (fileToUse) {
         const formData = new FormData();
-        formData.append("file", attachedFile);
+        formData.append("file", fileToUse);
         response = await fetch("/api/evaluate", {
           method: "POST",
           body: formData,
@@ -309,6 +356,21 @@ export default function Chat() {
     }
     suggestions.push("全体的な改善の優先順位を教えて");
     return suggestions;
+  };
+
+  const handleRetry = () => {
+    if (!lastUserInput) return;
+    // 最後のユーザーメッセージとエラー応答を除去
+    const trimmed = messagesRef.current.slice(0, -2);
+    setMessages(trimmed);
+    messagesRef.current = trimmed;
+    if (mode === "evaluate") {
+      setInput(lastUserInput.text);
+      setAttachedFile(lastUserInput.file ?? null);
+      setTimeout(() => sendEvaluation(lastUserInput.file), 0);
+    } else {
+      sendChat(lastUserInput.text);
+    }
   };
 
   const switchToEvaluate = () => {
@@ -500,6 +562,12 @@ export default function Chat() {
             </div>
           )}
 
+          {truncationWarning && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              ファイルが30,000文字を超えたため、一部を省略して評価しています
+            </div>
+          )}
+
           {messages.map((message, index) => {
             // このメッセージまでのアシスタント回答数をカウント
             const assistantCountUpToHere = messages
@@ -560,7 +628,15 @@ export default function Chat() {
                     {message.role === "assistant" &&
                       message.content &&
                       !(isLoading && index === messages.length - 1) && (
-                        <div className="mt-2 flex justify-end">
+                        <div className="mt-2 flex items-center justify-end gap-2">
+                          {message.content.startsWith("申し訳ありません、エラーが発生しました") && lastUserInput && (
+                            <button
+                              onClick={handleRetry}
+                              className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-100"
+                            >
+                              もう一度試す
+                            </button>
+                          )}
                           <CopyButton text={parseSuggestions(message.content).body} />
                         </div>
                       )}
@@ -666,7 +742,7 @@ export default function Chat() {
                 川崎裕一に直接相談する
               </button>
               <button
-                onClick={() => signIn("google")}
+                onClick={() => signIn("google", { callbackUrl: "/?restore=true" })}
                 className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-6 py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
               >
                 Googleでログインして続ける

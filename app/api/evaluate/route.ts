@@ -7,9 +7,13 @@ import { parseAllScores } from "@/app/lib/parse-scores";
 import { waitUntil } from "@vercel/functions";
 import { auth } from "@/auth";
 
+export const maxDuration = 60;
+
 const anthropic = new Anthropic();
 
-async function extractPlanText(request: NextRequest): Promise<string> {
+async function extractPlanText(
+  request: NextRequest
+): Promise<{ text: string; truncated: boolean }> {
   const contentType = request.headers.get("content-type") || "";
 
   if (contentType.includes("multipart/form-data")) {
@@ -23,14 +27,14 @@ async function extractPlanText(request: NextRequest): Promise<string> {
       return parseFile(buffer, file.name);
     }
     if (text?.trim()) {
-      return text.trim();
+      return { text: text.trim(), truncated: false };
     }
     throw new Error("ファイルまたはテキストを入力してください");
   }
 
   const body = await request.json();
   if (body.text?.trim()) {
-    return body.text.trim();
+    return { text: body.text.trim(), truncated: false };
   }
   throw new Error("事業計画のテキストを入力してください");
 }
@@ -51,7 +55,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const planText = await extractPlanText(request);
+    const { text: planText, truncated } = await extractPlanText(request);
     const systemPrompt = buildEvaluationSystemPrompt(planText);
 
     // Create session for logging
@@ -67,7 +71,7 @@ export async function POST(request: NextRequest) {
     let fullResponse = "";
     const stream = anthropic.messages.stream({
       model: "claude-sonnet-4-5-20250929",
-      max_tokens: 4096,
+      max_tokens: 8192,
       temperature: 0.3,
       system: systemPrompt,
       messages: [
@@ -87,6 +91,14 @@ export async function POST(request: NextRequest) {
               `data: ${JSON.stringify({ type: "evaluation_start" })}\n\n`
             )
           );
+
+          if (truncated) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: "truncation_warning" })}\n\n`
+              )
+            );
+          }
 
           for await (const event of stream) {
             if (

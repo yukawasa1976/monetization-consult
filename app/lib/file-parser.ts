@@ -3,7 +3,7 @@ const MAX_CHARS = 30000;
 export async function parseFile(
   buffer: Buffer,
   fileName: string
-): Promise<string> {
+): Promise<{ text: string; truncated: boolean }> {
   const ext = fileName.split(".").pop()?.toLowerCase();
   let text: string;
 
@@ -31,7 +31,10 @@ export async function parseFile(
   }
 
   if (text.length > MAX_CHARS) {
-    return text.slice(0, MAX_CHARS) + "\n\n（以下省略：30,000文字を超えたため）";
+    return {
+      text: text.slice(0, MAX_CHARS) + "\n\n（以下省略：30,000文字を超えたため）",
+      truncated: true,
+    };
   }
-  return text;
+  return { text, truncated: false };
 }

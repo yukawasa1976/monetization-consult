@@ -6,6 +6,8 @@ import { createSession, logMessage, touchSession } from "@/app/lib/db";
 import { waitUntil } from "@vercel/functions";
 import { auth } from "@/auth";
 
+export const maxDuration = 60;
+
 const anthropic = new Anthropic();
 
 export async function POST(request: NextRequest) {

@@ -129,6 +129,38 @@ export async function getFeedbacks(limit = 50, offset = 0) {
   return result.rows;
 }
 
+// --- シェア機能 ---
+
+export async function createShareToken(
+  sessionId: string,
+  userId: string | null
+): Promise<string> {
+  // 同一セッションで既存トークンがあればそれを返す
+  const existing = await sql`
+    SELECT token FROM session_shares WHERE session_id = ${sessionId} LIMIT 1
+  `;
+  if (existing.rows.length > 0) {
+    return existing.rows[0].token;
+  }
+  const result = await sql`
+    INSERT INTO session_shares (session_id, created_by)
+    VALUES (${sessionId}, ${userId})
+    RETURNING token
+  `;
+  return result.rows[0].token;
+}
+
+export async function getShareMessages(token: string) {
+  const result = await sql`
+    SELECT m.id, m.role, m.content, m.created_at
+    FROM messages m
+    JOIN session_shares ss ON ss.session_id = m.session_id
+    WHERE ss.token = ${token}::uuid
+    ORDER BY m.created_at ASC
+  `;
+  return result.rows;
+}
+
 export async function getUserSessionCount(userId: string): Promise<number> {
   const result = await sql`
     SELECT COUNT(*)::int as count FROM sessions WHERE user_id = ${userId}

@@ -37,6 +37,9 @@ export default function Chat() {
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [truncationWarning, setTruncationWarning] = useState(false);
   const [lastUserInput, setLastUserInput] = useState<{ text: string; file: File | null } | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const messagesRef = useRef<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -418,6 +421,34 @@ export default function Chat() {
     setFeedbackSent(false);
   };
 
+  const handleShare = async () => {
+    if (isSharing) return;
+    if (shareUrl) {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+      return;
+    }
+    setIsSharing(true);
+    try {
+      const res = await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setShareUrl(data.url);
+      await navigator.clipboard.writeText(data.url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      alert("シェアリンクの作成に失敗しました");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   const parseSuggestions = (content: string): { body: string; suggestions: string[] } => {
     const match = content.match(/\n*【次の質問候補】\n([\s\S]*?)$/);
     if (!match) return { body: content, suggestions: [] };
@@ -706,18 +737,43 @@ export default function Chat() {
             );
           })()}
 
-          {/* Feedback CTA at conversation breakpoints */}
-          {!isLoading && messages.length > 0 && !showFeedbackInline && !feedbackSent && (() => {
+          {/* Share & Feedback CTA at conversation breakpoints */}
+          {!isLoading && messages.length > 0 && (() => {
             const assistantCount = messages.filter((m) => m.role === "assistant").length;
             if (assistantCount < 2) return null;
             return (
-              <div className="mt-6 text-center">
-                <button
-                  onClick={() => setShowFeedbackInline(true)}
-                  className="text-xs text-zinc-400 transition-colors hover:text-zinc-600"
-                >
-                  このサービスへのご意見・ご要望はありますか？
-                </button>
+              <div className="mt-6 flex items-center justify-center gap-4">
+                {sessionId && (
+                  <button
+                    onClick={handleShare}
+                    disabled={isSharing}
+                    className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition-colors hover:text-zinc-600 disabled:opacity-50"
+                  >
+                    {shareCopied ? (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-emerald-500">
+                          <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
+                        </svg>
+                        リンクをコピーしました
+                      </>
+                    ) : (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                          <path d="M13 4.5a2.5 2.5 0 1 1 .702 1.737L6.97 9.604a2.518 2.518 0 0 1 0 .792l6.733 3.367a2.5 2.5 0 1 1-.671 1.341l-6.733-3.367a2.5 2.5 0 1 1 0-3.474l6.733-3.367A2.52 2.52 0 0 1 13 4.5Z" />
+                        </svg>
+                        {isSharing ? "作成中..." : "この会話をシェア"}
+                      </>
+                    )}
+                  </button>
+                )}
+                {!showFeedbackInline && !feedbackSent && (
+                  <button
+                    onClick={() => setShowFeedbackInline(true)}
+                    className="text-xs text-zinc-400 transition-colors hover:text-zinc-600"
+                  >
+                    ご意見・ご要望
+                  </button>
+                )}
               </div>
             );
           })()}

@@ -39,7 +39,8 @@ export default function Chat() {
   const [lastUserInput, setLastUserInput] = useState<{ text: string; file: File | null } | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState(false);
-  const [shareCopied, setShareCopied] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
   const messagesRef = useRef<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -424,9 +425,7 @@ export default function Chat() {
   const handleShare = async () => {
     if (isSharing) return;
     if (shareUrl) {
-      await navigator.clipboard.writeText(shareUrl);
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2000);
+      setShowShareModal(true);
       return;
     }
     setIsSharing(true);
@@ -439,14 +438,41 @@ export default function Chat() {
       if (!res.ok) throw new Error();
       const data = await res.json();
       setShareUrl(data.url);
-      await navigator.clipboard.writeText(data.url);
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2000);
+      setShowShareModal(true);
     } catch {
       alert("シェアリンクの作成に失敗しました");
     } finally {
       setIsSharing(false);
     }
+  };
+
+  const copyShareLink = async () => {
+    if (!shareUrl) return;
+    await navigator.clipboard.writeText(shareUrl);
+    setShareLinkCopied(true);
+    setTimeout(() => setShareLinkCopied(false), 2000);
+  };
+
+  const shareText = "川崎裕一のマネタイズ相談でこんなアドバイスをもらいました";
+
+  const shareToX = () => {
+    if (!shareUrl) return;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, "_blank");
+  };
+
+  const shareToLine = () => {
+    if (!shareUrl) return;
+    window.open(`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}`, "_blank");
+  };
+
+  const shareToFacebook = () => {
+    if (!shareUrl) return;
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, "_blank");
+  };
+
+  const shareToEmail = () => {
+    if (!shareUrl) return;
+    window.open(`mailto:?subject=${encodeURIComponent(shareText)}&body=${encodeURIComponent(shareUrl)}`, "_blank");
   };
 
   const parseSuggestions = (content: string): { body: string; suggestions: string[] } => {
@@ -668,6 +694,18 @@ export default function Chat() {
                               もう一度試す
                             </button>
                           )}
+                          {sessionId && assistantCountUpToHere >= 2 && (
+                            <button
+                              onClick={handleShare}
+                              disabled={isSharing}
+                              className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-50"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                                <path d="M13 4.5a2.5 2.5 0 1 1 .702 1.737L6.97 9.604a2.518 2.518 0 0 1 0 .792l6.733 3.367a2.5 2.5 0 1 1-.671 1.341l-6.733-3.367a2.5 2.5 0 1 1 0-3.474l6.733-3.367A2.52 2.52 0 0 1 13 4.5Z" />
+                              </svg>
+                              {isSharing ? "作成中..." : "シェア"}
+                            </button>
+                          )}
                           <CopyButton text={parseSuggestions(message.content).body} />
                         </div>
                       )}
@@ -737,43 +775,18 @@ export default function Chat() {
             );
           })()}
 
-          {/* Share & Feedback CTA at conversation breakpoints */}
-          {!isLoading && messages.length > 0 && (() => {
+          {/* Feedback CTA at conversation breakpoints */}
+          {!isLoading && messages.length > 0 && !showFeedbackInline && !feedbackSent && (() => {
             const assistantCount = messages.filter((m) => m.role === "assistant").length;
             if (assistantCount < 2) return null;
             return (
-              <div className="mt-6 flex items-center justify-center gap-4">
-                {sessionId && (
-                  <button
-                    onClick={handleShare}
-                    disabled={isSharing}
-                    className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition-colors hover:text-zinc-600 disabled:opacity-50"
-                  >
-                    {shareCopied ? (
-                      <>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-emerald-500">
-                          <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
-                        </svg>
-                        リンクをコピーしました
-                      </>
-                    ) : (
-                      <>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                          <path d="M13 4.5a2.5 2.5 0 1 1 .702 1.737L6.97 9.604a2.518 2.518 0 0 1 0 .792l6.733 3.367a2.5 2.5 0 1 1-.671 1.341l-6.733-3.367a2.5 2.5 0 1 1 0-3.474l6.733-3.367A2.52 2.52 0 0 1 13 4.5Z" />
-                        </svg>
-                        {isSharing ? "作成中..." : "この会話をシェア"}
-                      </>
-                    )}
-                  </button>
-                )}
-                {!showFeedbackInline && !feedbackSent && (
-                  <button
-                    onClick={() => setShowFeedbackInline(true)}
-                    className="text-xs text-zinc-400 transition-colors hover:text-zinc-600"
-                  >
-                    ご意見・ご要望
-                  </button>
-                )}
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => setShowFeedbackInline(true)}
+                  className="text-xs text-zinc-400 transition-colors hover:text-zinc-600"
+                >
+                  このサービスへのご意見・ご要望はありますか？
+                </button>
               </div>
             );
           })()}
@@ -955,6 +968,86 @@ export default function Chat() {
                 </button>
               </>
             )}
+          </div>
+        </div>
+      )}
+      {showShareModal && shareUrl && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 sm:items-center">
+          <div className="mb-4 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl sm:mb-0">
+            <div className="mb-5 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-zinc-900">
+                この会話をシェア
+              </h3>
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                  <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+                </svg>
+              </button>
+            </div>
+            <div className="grid grid-cols-4 gap-3">
+              {/* X */}
+              <button
+                onClick={shareToX}
+                className="flex flex-col items-center gap-1.5 rounded-xl p-3 transition-colors hover:bg-zinc-50"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black">
+                  <svg viewBox="0 0 24 24" fill="white" className="h-5 w-5">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
+                </div>
+                <span className="text-xs text-zinc-600">X</span>
+              </button>
+              {/* LINE */}
+              <button
+                onClick={shareToLine}
+                className="flex flex-col items-center gap-1.5 rounded-xl p-3 transition-colors hover:bg-zinc-50"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#06C755]">
+                  <svg viewBox="0 0 24 24" fill="white" className="h-6 w-6">
+                    <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314" />
+                  </svg>
+                </div>
+                <span className="text-xs text-zinc-600">LINE</span>
+              </button>
+              {/* Facebook */}
+              <button
+                onClick={shareToFacebook}
+                className="flex flex-col items-center gap-1.5 rounded-xl p-3 transition-colors hover:bg-zinc-50"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1877F2]">
+                  <svg viewBox="0 0 24 24" fill="white" className="h-6 w-6">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                  </svg>
+                </div>
+                <span className="text-xs text-zinc-600">Facebook</span>
+              </button>
+              {/* Email */}
+              <button
+                onClick={shareToEmail}
+                className="flex flex-col items-center gap-1.5 rounded-xl p-3 transition-colors hover:bg-zinc-50"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="h-5 w-5">
+                    <path d="M1.5 8.67v8.58a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3V8.67l-8.928 5.493a3 3 0 0 1-3.144 0L1.5 8.67Z" />
+                    <path d="M22.5 6.908V6.75a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3v.158l9.714 5.978a1.5 1.5 0 0 0 1.572 0L22.5 6.908Z" />
+                  </svg>
+                </div>
+                <span className="text-xs text-zinc-600">メール</span>
+              </button>
+            </div>
+            {/* リンクコピー */}
+            <button
+              onClick={copyShareLink}
+              className="mt-4 flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-left transition-colors hover:bg-zinc-100"
+            >
+              <span className="truncate text-sm text-zinc-500">{shareUrl}</span>
+              <span className="ml-3 shrink-0 text-xs font-medium text-zinc-700">
+                {shareLinkCopied ? "コピー済み" : "コピー"}
+              </span>
+            </button>
           </div>
         </div>
       )}

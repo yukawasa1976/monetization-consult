@@ -476,7 +476,7 @@ export default function Chat() {
   };
 
   const parseSuggestions = (content: string): { body: string; suggestions: string[] } => {
-    const match = content.match(/\n*【次の質問候補】\n([\s\S]*?)$/);
+    const match = content.match(/\n*【(?:次の質問候補|深掘りポイント)】\n([\s\S]*?)$/);
     if (!match) return { body: content, suggestions: [] };
     const body = content.slice(0, match.index).trimEnd();
     const suggestions = match[1]
@@ -570,6 +570,14 @@ export default function Chat() {
                     5つの軸で100点満点のスコア評価。具体的な改善アドバイスを提供します。
                   </p>
                 </button>
+              </div>
+              <div className="mt-8 max-w-lg text-left">
+                <p className="mb-2 text-xs font-medium text-zinc-400">データの取り扱いについて</p>
+                <ul className="space-y-1 text-xs leading-relaxed text-zinc-400">
+                  <li>・会話内容やアップロードファイルは、回答生成のみに使用されます</li>
+                  <li>・第三者への共有やAIモデルの学習には使用しません</li>
+                  <li>・ログインユーザーの会話履歴はマイページで確認・管理できます</li>
+                </ul>
               </div>
             </div>
           )}
@@ -740,7 +748,11 @@ export default function Chat() {
               const { suggestions } = parseSuggestions(lastMsg.content);
               if (suggestions.length === 0) return null;
               return (
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4">
+                  <p className="mb-2 text-xs text-zinc-500">
+                    もっと詳しく聞く
+                  </p>
+                  <div className="flex flex-wrap gap-2">
                   {suggestions.map((s) => (
                     <button
                       key={s}
@@ -750,6 +762,7 @@ export default function Chat() {
                       {s}
                     </button>
                   ))}
+                  </div>
                 </div>
               );
             }
@@ -891,6 +904,8 @@ export default function Chat() {
             </div>
             <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-zinc-400">
               AIによる回答です。重要な判断は専門家にもご相談ください。
+              <br />
+              会話内容・アップロードファイルは回答生成のみに使用し、第三者への共有やAI学習には使用しません。
             </p>
           </>
         )}

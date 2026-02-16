@@ -60,8 +60,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "エラーが発生しました";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Feedback API error:", error);
+    return NextResponse.json({ error: "エラーが発生しました" }, { status: 500 });
   }
 }

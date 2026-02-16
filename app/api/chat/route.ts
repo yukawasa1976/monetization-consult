@@ -100,11 +100,10 @@ export async function POST(request: NextRequest) {
             );
           }
         } catch (error) {
-          const message =
-            error instanceof Error ? error.message : "Stream error";
+          console.error("Chat stream error:", error);
           controller.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ error: message })}\n\n`
+              `data: ${JSON.stringify({ error: "Stream error" })}\n\n`
             )
           );
           controller.close();
@@ -120,9 +119,8 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Internal server error";
-    return new Response(JSON.stringify({ error: message }), {
+    console.error("Chat API error:", error);
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });

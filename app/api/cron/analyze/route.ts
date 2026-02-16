@@ -6,9 +6,12 @@ const anthropic = new Anthropic();
 
 export async function POST(request: NextRequest) {
   // Verify cron secret
-  const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret) {
+    return new Response("Service unavailable", { status: 503 });
+  }
+  const authHeader = request.headers.get("authorization");
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return new Response("Unauthorized", { status: 401 });
   }
 
@@ -74,18 +77,18 @@ export async function POST(request: NextRequest) {
       return Response.json({ message: "No data to analyze this week" });
     }
 
-    // 6. Build analysis prompt
+    // 6. Build analysis prompt (anonymized - no raw user content)
     const chatSummary = chatMessages.rows
       .map(
         (m) =>
-          `[${m.mode}][${m.role}] ${m.content.slice(0, 300)}`
+          `[${m.mode}][${m.role}] (${m.content.length}文字のメッセージ)`
       )
       .join("\n");
 
     const evalSummary = evaluations.rows
       .map(
         (e) =>
-          `[Score: ${e.score_total}/100] Product:${e.score_product} Pricing:${e.score_pricing} Sales:${e.score_sales} Scale:${e.score_scale} Finance:${e.score_finance}\nPlan excerpt: ${e.plan_text?.slice(0, 200) ?? "N/A"}`
+          `[Score: ${e.score_total}/100] Product:${e.score_product} Pricing:${e.score_pricing} Sales:${e.score_sales} Scale:${e.score_scale} Finance:${e.score_finance}`
       )
       .join("\n---\n");
 
@@ -222,7 +225,7 @@ A: [簡潔で正確な回答（2〜3文）]
   } catch (error) {
     console.error("Cron analyze error:", error);
     return Response.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

@@ -10,8 +10,12 @@ import AuthButton from "./AuthButton";
 import ConsultationForm from "./ConsultationForm";
 
 const FREE_MESSAGE_LIMIT = 3;
+const SHARE_BONUS_LIMIT = 3;
+const REFERRAL_BONUS_LIMIT = 3;
+const REFERRAL_BONUS_KEY = "monetize_referral_bonus";
 const CONSULTATION_CTA_AFTER = 3; // 3往復後に直接相談の導線を表示
 const STORAGE_KEY = "monetize_pending_messages";
+const SHARE_BONUS_KEY = "monetize_share_bonus";
 
 type Message = {
   role: "user" | "assistant";
@@ -41,6 +45,8 @@ export default function Chat() {
   const [isSharing, setIsSharing] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
+  const [hasSharedForBonus, setHasSharedForBonus] = useState(false);
+  const [hasReferralBonus, setHasReferralBonus] = useState(false);
   const messagesRef = useRef<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -116,8 +122,38 @@ export default function Chat() {
     window.history.replaceState({}, "", "/");
   }, [searchParams, session]);
 
+  // シェアボーナス・リファラルボーナスの復元
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(SHARE_BONUS_KEY) === "true") {
+        setHasSharedForBonus(true);
+      }
+      if (localStorage.getItem(REFERRAL_BONUS_KEY) === "true") {
+        setHasReferralBonus(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // ?ref= パラメータでリファラルボーナスを付与
+  useEffect(() => {
+    if (!searchParams.get("ref")) return;
+    try {
+      if (localStorage.getItem(REFERRAL_BONUS_KEY) !== "true") {
+        localStorage.setItem(REFERRAL_BONUS_KEY, "true");
+        setHasReferralBonus(true);
+      }
+    } catch {
+      // ignore
+    }
+    window.history.replaceState({}, "", "/");
+  }, [searchParams]);
+
   const userMessageCount = messages.filter((m) => m.role === "user").length;
-  const isLimitReached = !session?.user && userMessageCount >= FREE_MESSAGE_LIMIT;
+  const bonusCount = (hasSharedForBonus ? SHARE_BONUS_LIMIT : 0) + (hasReferralBonus ? REFERRAL_BONUS_LIMIT : 0);
+  const effectiveLimit = FREE_MESSAGE_LIMIT + bonusCount;
+  const isLimitReached = !session?.user && userMessageCount >= effectiveLimit;
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -475,6 +511,32 @@ export default function Chat() {
     window.open(`mailto:?subject=${encodeURIComponent(shareText)}&body=${encodeURIComponent(shareUrl)}`, "_blank");
   };
 
+  const handleShareForBonus = async () => {
+    if (isSharing) return;
+    setIsSharing(true);
+    try {
+      let url = shareUrl;
+      if (!url) {
+        const res = await fetch("/api/share", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        url = data.url;
+        setShareUrl(url);
+      }
+      setShowShareModal(true);
+      setHasSharedForBonus(true);
+      try { localStorage.setItem(SHARE_BONUS_KEY, "true"); } catch {}
+    } catch {
+      alert("シェアリンクの作成に失敗しました");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   const parseSuggestions = (content: string): { body: string; suggestions: string[] } => {
     const match = content.match(/\n*【(?:次の質問候補|深掘りポイント)】\n([\s\S]*?)$/);
     if (!match) return { body: content, suggestions: [] };
@@ -578,6 +640,7 @@ export default function Chat() {
                   <li>・第三者への共有やAIモデルの学習には使用しません</li>
                   <li>・ログインユーザーの会話履歴はマイページで確認・管理できます</li>
                 </ul>
+                <a href="/data-policy" target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-zinc-400 underline hover:text-zinc-600">詳しく見る</a>
               </div>
             </div>
           )}
@@ -814,7 +877,7 @@ export default function Chat() {
         {isLimitReached ? (
           <div className="mx-auto max-w-3xl text-center">
             <p className="mb-4 text-sm text-zinc-600">
-              無料で相談できる回数（{FREE_MESSAGE_LIMIT}回）に達しました。
+              無料で相談できる回数（{effectiveLimit}回）に達しました。
             </p>
             <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <button
@@ -830,6 +893,18 @@ export default function Chat() {
                 Googleでログインして続ける
               </button>
             </div>
+            {!hasSharedForBonus && sessionId && (
+              <button
+                onClick={handleShareForBonus}
+                disabled={isSharing}
+                className="mt-4 inline-flex items-center gap-1.5 text-sm text-zinc-500 transition-colors hover:text-zinc-700 disabled:opacity-50"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                  <path d="M13 4.5a2.5 2.5 0 1 1 .702 1.737L6.97 9.604a2.518 2.518 0 0 1 0 .792l6.733 3.367a2.5 2.5 0 1 1-.671 1.341l-6.733-3.367a2.5 2.5 0 1 1 0-3.474l6.733-3.367A2.52 2.52 0 0 1 13 4.5Z" />
+                </svg>
+                {isSharing ? "準備中..." : `この会話をシェアするとあと${SHARE_BONUS_LIMIT}回相談できます`}
+              </button>
+            )}
             <button
               onClick={copyConversation}
               className="mt-4 inline-flex items-center gap-1.5 text-xs text-zinc-400 transition-colors hover:text-zinc-600"
@@ -906,6 +981,7 @@ export default function Chat() {
               AIによる回答です。重要な判断は専門家にもご相談ください。
               <br />
               会話内容・アップロードファイルは回答生成のみに使用し、第三者への共有やAI学習には使用しません。
+              <a href="/data-policy" target="_blank" rel="noopener noreferrer" className="ml-1 underline hover:text-zinc-600">詳細</a>
             </p>
           </>
         )}

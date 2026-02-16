@@ -87,10 +87,10 @@ export default async function SharePage({
             インターネットサービスの収益化について、AIがアドバイスします
           </p>
           <Link
-            href="/"
+            href="/?ref=1"
             className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
           >
-            自分も相談してみる →
+            自分も相談してみる（無料で{3 + 3}回相談できます） →
           </Link>
         </div>
       </div>

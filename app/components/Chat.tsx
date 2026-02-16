@@ -640,7 +640,10 @@ export default function Chat() {
                   <li>・第三者への共有やAIモデルの学習には使用しません</li>
                   <li>・ログインユーザーの会話履歴はマイページで確認・管理できます</li>
                 </ul>
-                <a href="/data-policy" target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-zinc-400 underline hover:text-zinc-600">詳しく見る</a>
+                <div className="mt-2 flex gap-3">
+                  <a href="/data-policy" target="_blank" rel="noopener noreferrer" className="text-xs text-zinc-400 underline hover:text-zinc-600">詳しく見る</a>
+                  <a href="/updates" target="_blank" rel="noopener noreferrer" className="text-xs text-zinc-400 underline hover:text-zinc-600">アップデート履歴</a>
+                </div>
               </div>
             </div>
           )}

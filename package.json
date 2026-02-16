@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "extract-knowledge": "node scripts/extract-knowledge.mjs",
+    "generate-updates": "node scripts/generate-updates.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

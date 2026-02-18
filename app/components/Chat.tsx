@@ -47,6 +47,10 @@ export default function Chat() {
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
   const [hasSharedForBonus, setHasSharedForBonus] = useState(false);
   const [hasReferralBonus, setHasReferralBonus] = useState(false);
+  const [recentSessions, setRecentSessions] = useState<
+    { id: string; mode: string; created_at: string; message_count: number; first_message: string | null }[]
+  >([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
   const messagesRef = useRef<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -86,6 +90,19 @@ export default function Chat() {
 
     window.history.replaceState({}, "", "/");
   }, [searchParams, session]);
+
+  // ログイン済み＆ランディング画面時に最近のセッションを取得
+  useEffect(() => {
+    if (!session?.user || mode !== null || messages.length > 0) return;
+    setSessionsLoading(true);
+    fetch("/api/sessions")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.sessions) setRecentSessions(data.sessions);
+      })
+      .catch((err) => console.error("Failed to load sessions:", err))
+      .finally(() => setSessionsLoading(false));
+  }, [session, mode, messages.length]);
 
   // 未ログイン時: メッセージをlocalStorageに保存
   useEffect(() => {
@@ -633,6 +650,68 @@ export default function Chat() {
                   </p>
                 </button>
               </div>
+              {/* 最近の相談 */}
+              {session?.user && sessionsLoading && (
+                <div className="mt-10 w-full max-w-lg">
+                  <p className="mb-3 text-xs font-medium text-zinc-400">最近の相談</p>
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="animate-pulse rounded-xl border border-zinc-200 bg-white p-4">
+                        <div className="h-4 w-3/4 rounded bg-zinc-100" />
+                        <div className="mt-2 h-3 w-1/3 rounded bg-zinc-100" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {session?.user && !sessionsLoading && recentSessions.length > 0 && (
+                <div className="mt-10 w-full max-w-lg">
+                  <p className="mb-3 text-xs font-medium text-zinc-400">最近の相談</p>
+                  <div className="space-y-2">
+                    {recentSessions.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => {
+                          window.history.replaceState({}, "", `/?session=${s.id}`);
+                          fetch(`/api/sessions/${s.id}/messages`)
+                            .then((res) => res.json())
+                            .then((data) => {
+                              if (data.messages && data.messages.length > 0) {
+                                const loaded = data.messages.map((m: { role: string; content: string }) => ({
+                                  role: m.role as "user" | "assistant",
+                                  content: m.content,
+                                  type: "chat" as const,
+                                }));
+                                setMessages(loaded);
+                                messagesRef.current = loaded;
+                                setSessionId(s.id);
+                                setMode("chat");
+                              }
+                            })
+                            .catch((err) => console.error("Failed to load session:", err));
+                          window.history.replaceState({}, "", "/");
+                        }}
+                        className="w-full rounded-xl border border-zinc-200 bg-white p-4 text-left transition-all hover:border-zinc-300 hover:shadow-sm"
+                      >
+                        <p className="truncate text-sm text-zinc-800">
+                          {s.first_message || (s.mode === "evaluate" ? "事業計画評価" : "新しい相談")}
+                        </p>
+                        <div className="mt-1.5 flex items-center gap-3 text-xs text-zinc-400">
+                          <span>{s.mode === "evaluate" ? "評価" : "相談"}</span>
+                          <span>{s.message_count}件のメッセージ</span>
+                          <span>{new Date(s.created_at).toLocaleDateString("ja-JP", { month: "short", day: "numeric" })}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <a
+                    href="/mypage"
+                    className="mt-3 inline-block text-xs text-zinc-400 transition-colors hover:text-zinc-600"
+                  >
+                    すべての履歴を見る &rarr;
+                  </a>
+                </div>
+              )}
               <div className="mt-8 max-w-lg text-left">
                 <p className="mb-2 text-xs font-medium text-zinc-400">データの取り扱いについて</p>
                 <ul className="space-y-1 text-xs leading-relaxed text-zinc-400">

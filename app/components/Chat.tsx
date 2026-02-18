@@ -35,6 +35,7 @@ export default function Chat() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [conversationCopied, setConversationCopied] = useState(false);
   const [showFeedbackInline, setShowFeedbackInline] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [feedbackCategory, setFeedbackCategory] = useState<"bug" | "improvement" | "other">("improvement");
   const [feedbackContent, setFeedbackContent] = useState("");
   const [feedbackSending, setFeedbackSending] = useState(false);
@@ -570,25 +571,24 @@ export default function Chat() {
       {/* Header */}
       <header className="border-b border-zinc-200 bg-white px-4 py-3">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
-          <div>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setShowProfile(true)} className="shrink-0">
+              <img src="/kawasaki-profile.jpg" alt="川崎裕一" className="h-9 w-9 rounded-full object-cover transition-opacity hover:opacity-80" />
+            </button>
+            <div>
             <h1 className="text-lg font-bold text-zinc-900">
               川崎裕一のマネタイズ相談
             </h1>
-            <p className="text-sm text-zinc-500">
-              {mode === "chat"
-                ? "インターネットサービスの収益化について相談できます"
-                : mode === "evaluate"
-                  ? "事業計画評価モード"
-                  : "インターネットサービスの収益化について相談できます"}
-            </p>
+            {mode !== null && (
+              <p className="text-sm text-zinc-500">
+                {mode === "chat"
+                  ? "インターネットサービスの収益化について相談できます"
+                  : "事業計画評価モード"}
+              </p>
+            )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowFeedbackInline(true)}
-              className="text-xs text-zinc-400 transition-colors hover:text-zinc-600"
-            >
-              ご意見・ご要望
-            </button>
             <AuthButton />
             {mode === "chat" && (
               <button
@@ -617,9 +617,6 @@ export default function Chat() {
         <div className="mx-auto max-w-3xl space-y-6">
           {messages.length === 0 && mode === null && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <h2 className="mb-2 text-xl font-semibold text-zinc-800">
-                川崎裕一のマネタイズ相談
-              </h2>
               <p className="mb-10 max-w-md text-sm text-zinc-500">
                 サービスの収益化、価格設計、ビジネスモデルなど、
                 マネタイズに関することなら何でもご相談ください。
@@ -712,40 +709,11 @@ export default function Chat() {
                   </a>
                 </div>
               )}
-              <div className="mt-8 max-w-lg text-left">
-                <p className="mb-2 text-xs font-medium text-zinc-400">データの取り扱いについて</p>
-                <ul className="space-y-1 text-xs leading-relaxed text-zinc-400">
-                  <li>・会話内容やアップロードファイルは、回答生成のみに使用されます</li>
-                  <li>・第三者への共有やAIモデルの学習には使用しません</li>
-                  <li>・ログインユーザーの会話履歴はマイページで確認・管理できます</li>
-                </ul>
-                <div className="mt-2 flex gap-3">
-                  <a href="/data-policy" target="_blank" rel="noopener noreferrer" className="text-xs text-zinc-400 underline hover:text-zinc-600">詳しく見る</a>
-                  <a href="/updates" target="_blank" rel="noopener noreferrer" className="text-xs text-zinc-400 underline hover:text-zinc-600">アップデート履歴</a>
-                </div>
-              </div>
-              <div className="mt-8 max-w-lg text-left">
-                <p className="mb-3 text-xs font-medium text-zinc-400">回答者について</p>
-                <div className="flex items-start gap-4">
-                  <img
-                    src="/kawasaki-profile.jpg"
-                    alt="川崎裕一"
-                    className="h-12 w-12 shrink-0 rounded-full object-cover"
-                  />
-                  <div>
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-sm font-semibold text-zinc-700">川崎裕一</p>
-                      <p className="text-xs text-zinc-400">エンジェル投資家</p>
-                    </div>
-                    <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                      はてな副社長 → ミクシィCOO → スマートニュース執行役員。執筆中の「悩みを集めて、値段をつける」の知見をベースに、AIがマネタイズの相談に答えます。
-                      <a href="https://note.com/yukawasa" target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-xs text-zinc-400 transition-colors hover:text-zinc-600">
-                        <span>noteでマネタイズの記事を書いています</span>
-                        <span>&rarr;</span>
-                      </a>
-                    </p>
-                  </div>
-                </div>
+              <div className="mt-10 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-zinc-400">
+                <button onClick={() => setShowProfile(true)} className="transition-colors hover:text-zinc-600">川崎裕一について</button>
+                <a href="/data-policy" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-zinc-600">データポリシー</a>
+                <a href="/updates" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-zinc-600">更新履歴</a>
+                <button onClick={() => setShowFeedbackInline(true)} className="transition-colors hover:text-zinc-600">ご意見・ご要望</button>
               </div>
             </div>
           )}
@@ -1087,6 +1055,8 @@ export default function Chat() {
               <br />
               会話内容・アップロードファイルは回答生成のみに使用し、第三者への共有やAI学習には使用しません。
               <a href="/data-policy" target="_blank" rel="noopener noreferrer" className="ml-1 underline hover:text-zinc-600">詳細</a>
+              <span className="mx-1">・</span>
+              <button onClick={() => setShowFeedbackInline(true)} className="underline hover:text-zinc-600">ご意見・ご要望</button>
             </p>
           </>
         )}
@@ -1094,6 +1064,41 @@ export default function Chat() {
       )}
       {showConsultationForm && (
         <ConsultationForm onClose={() => setShowConsultationForm(false)} />
+      )}
+      {showProfile && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 sm:items-center">
+          <div className="mb-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:mb-0">
+            <div className="mb-5 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-zinc-900">川崎裕一について</h3>
+              <button
+                onClick={() => setShowProfile(false)}
+                className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                  <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex items-start gap-4">
+              <img src="/kawasaki-profile.jpg" alt="川崎裕一" className="h-16 w-16 shrink-0 rounded-full object-cover" />
+              <div>
+                <p className="text-sm font-semibold text-zinc-800">川崎裕一</p>
+                <p className="text-xs text-zinc-500">エンジェル投資家 / マネタイズおじさん</p>
+              </div>
+            </div>
+            <p className="mt-4 text-sm leading-relaxed text-zinc-600">
+              はてな取締役副社長、ミクシィ取締役COO、スマートニュース執行役員を経て、現在はエンジェル投資家として活動中。執筆中の「悩みを集めて、値段をつける」の知見をベースに、AIがマネタイズの相談に答えます。
+            </p>
+            <div className="mt-4 flex gap-4">
+              <a href="https://note.com/yukawasa/n/nd8793681dc1c" target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-500 transition-colors hover:text-zinc-700">
+                開発ストーリー &rarr;
+              </a>
+              <a href="https://note.com/yukawasa" target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-500 transition-colors hover:text-zinc-700">
+                note &rarr;
+              </a>
+            </div>
+          </div>
+        </div>
       )}
       {showFeedbackInline && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 sm:items-center">

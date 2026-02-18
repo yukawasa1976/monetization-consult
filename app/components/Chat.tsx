@@ -724,28 +724,26 @@ export default function Chat() {
                   <a href="/updates" target="_blank" rel="noopener noreferrer" className="text-xs text-zinc-400 underline hover:text-zinc-600">アップデート履歴</a>
                 </div>
               </div>
-              <div className="mt-8 max-w-lg rounded-2xl border border-zinc-200 bg-white p-5">
-                <p className="mb-3 text-xs font-medium text-zinc-400">このサービスについて</p>
-                <div className="flex gap-4">
+              <div className="mt-8 max-w-lg text-left">
+                <p className="mb-3 text-xs font-medium text-zinc-400">回答者について</p>
+                <div className="flex items-start gap-4">
                   <img
-                    src="https://assets.st-note.com/production/uploads/images/170941982/profile_bcb01ddfe12d498de498e14fcc498e9c.jpg?fit=bounds&format=jpeg&quality=85&width=330"
+                    src="/kawasaki-profile.jpg"
                     alt="川崎裕一"
-                    className="h-14 w-14 shrink-0 rounded-full object-cover"
+                    className="h-12 w-12 shrink-0 rounded-full object-cover"
                   />
                   <div>
-                    <p className="text-sm font-semibold text-zinc-800">川崎裕一</p>
-                    <p className="text-xs text-zinc-500">エンジェル投資家 / マネタイズおじさん</p>
-                    <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-                      はてな取締役副社長、ミクシィ取締役COO、スマートニュース執行役員を経て、現在はエンジェル投資家として活動中。著書「悩みを集めて、値段をつける」の知見をベースに、AIがマネタイズの相談に答えます。
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-sm font-semibold text-zinc-700">川崎裕一</p>
+                      <p className="text-xs text-zinc-400">エンジェル投資家</p>
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                      はてな副社長 → ミクシィCOO → スマートニュース執行役員。執筆中の「悩みを集めて、値段をつける」の知見をベースに、AIがマネタイズの相談に答えます。
+                      <a href="https://note.com/yukawasa" target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-xs text-zinc-400 transition-colors hover:text-zinc-600">
+                        <span>noteでマネタイズの記事を書いています</span>
+                        <span>&rarr;</span>
+                      </a>
                     </p>
-                    <a
-                      href="https://note.com/yukawasa"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 inline-block text-xs text-zinc-400 underline hover:text-zinc-600"
-                    >
-                      note &rarr;
-                    </a>
                   </div>
                 </div>
               </div>

@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { getSessionMessages } from "@/app/lib/db";
 import Link from "next/link";
+import CopyButton from "@/app/components/CopyButton";
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -75,11 +76,16 @@ export default async function SessionDetailPage({
                   {msg.content}
                 </div>
                 <div
-                  className={`mt-1 text-right text-xs ${
-                    msg.role === "user" ? "text-zinc-400" : "text-zinc-300"
+                  className={`mt-1 flex items-center ${
+                    msg.role === "user" ? "justify-end" : "justify-between"
                   }`}
                 >
-                  {formatDate(msg.created_at)}
+                  {msg.role === "assistant" && (
+                    <CopyButton text={msg.content} />
+                  )}
+                  <span className={`text-xs ${msg.role === "user" ? "text-zinc-400" : "text-zinc-300"}`}>
+                    {formatDate(msg.created_at)}
+                  </span>
                 </div>
               </div>
             </div>

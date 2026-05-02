@@ -58,6 +58,7 @@ export default function Chat() {
 
   const searchParams = useSearchParams();
   const [showConsultationForm, setShowConsultationForm] = useState(false);
+  const [showWallhittingForm, setShowWallhittingForm] = useState(false);
 
   // ログイン後に ?consultation=true があればフォームを自動表示
   useEffect(() => {
@@ -857,16 +858,17 @@ export default function Chat() {
                 </div>
                 {showCtaAfterThis && (
                   <div className="my-4 rounded-2xl border border-zinc-200 bg-gradient-to-r from-zinc-50 to-white p-5 text-center">
-                    <p className="mb-3 text-sm text-zinc-600">
-                      {message.type === "evaluation"
-                        ? "この評価結果をもとに、より具体的な改善策を一緒に考えませんか？"
-                        : "より深い相談は、直接お話しするとさらに具体的なアドバイスができます。"}
+                    <p className="mb-1 text-sm font-medium text-zinc-800">
+                      AIで整理できた課題を、川崎本人と直接話しませんか？
+                    </p>
+                    <p className="mb-4 text-xs text-zinc-500">
+                      壁打ち（30〜60分）でより具体的な打ち手を一緒に考えます
                     </p>
                     <button
-                      onClick={() => setShowConsultationForm(true)}
+                      onClick={() => setShowWallhittingForm(true)}
                       className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
                     >
-                      川崎裕一に直接相談する
+                      川崎と壁打ちを申し込む
                     </button>
                   </div>
                 )}
@@ -1064,6 +1066,9 @@ export default function Chat() {
       )}
       {showConsultationForm && (
         <ConsultationForm onClose={() => setShowConsultationForm(false)} />
+      )}
+      {showWallhittingForm && (
+        <ConsultationForm onClose={() => setShowWallhittingForm(false)} variant="wallhitting" />
       )}
       {showProfile && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 sm:items-center">

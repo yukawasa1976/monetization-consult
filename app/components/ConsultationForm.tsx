@@ -3,16 +3,19 @@
 import { useState, useRef } from "react";
 import { useSession, signIn } from "next-auth/react";
 
-export default function ConsultationForm({ onClose }: { onClose: () => void }) {
+export default function ConsultationForm({ onClose, variant = "consultation" }: { onClose: () => void; variant?: "consultation" | "wallhitting" }) {
   const { data: session } = useSession();
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
   const [xAccount, setXAccount] = useState("");
+  const [topic, setTopic] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const isWallhitting = variant === "wallhitting";
 
   if (!session?.user) {
     return (
@@ -22,7 +25,7 @@ export default function ConsultationForm({ onClose }: { onClose: () => void }) {
             ログインが必要です
           </h3>
           <p className="mb-6 text-sm text-zinc-500">
-            相談のお申し込みにはGoogleアカウントでのログインが必要です。
+            お申し込みにはGoogleアカウントでのログインが必要です。
           </p>
           <button
             onClick={() => signIn("google", { callbackUrl: "/?consultation=true" })}
@@ -47,10 +50,12 @@ export default function ConsultationForm({ onClose }: { onClose: () => void }) {
         <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
           <div className="mb-4 text-4xl">✅</div>
           <h3 className="mb-2 text-lg font-semibold text-zinc-900">
-            送信しました
+            申し込みを受け付けました
           </h3>
           <p className="mb-6 text-sm text-zinc-500">
-            事業計画書を確認のうえ、川崎裕一よりご連絡いたします。
+            {isWallhitting
+              ? "内容を確認のうえ、川崎よりご連絡いたします。"
+              : "事業計画書を確認のうえ、川崎裕一よりご連絡いたします。"}
           </p>
           <button
             onClick={onClose}
@@ -64,9 +69,16 @@ export default function ConsultationForm({ onClose }: { onClose: () => void }) {
   }
 
   const handleSubmit = async () => {
-    if (!name.trim() || !company.trim() || !file) {
-      setError("名前、会社名、事業計画書は必須です");
-      return;
+    if (isWallhitting) {
+      if (!name.trim() || !topic.trim()) {
+        setError("お名前と相談テーマは必須です");
+        return;
+      }
+    } else {
+      if (!name.trim() || !company.trim() || !file) {
+        setError("名前、会社名、事業計画書は必須です");
+        return;
+      }
     }
     setError("");
     setSending(true);
@@ -74,9 +86,11 @@ export default function ConsultationForm({ onClose }: { onClose: () => void }) {
     try {
       const formData = new FormData();
       formData.append("name", name.trim());
-      formData.append("company", company.trim());
+      formData.append("type", variant);
+      if (company.trim()) formData.append("company", company.trim());
       if (xAccount.trim()) formData.append("xAccount", xAccount.trim());
-      formData.append("file", file);
+      if (topic.trim()) formData.append("topic", topic.trim());
+      if (file) formData.append("file", file);
 
       const res = await fetch("/api/consultation", {
         method: "POST",
@@ -100,10 +114,12 @@ export default function ConsultationForm({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
         <h3 className="mb-1 text-lg font-semibold text-zinc-900">
-          川崎裕一に直接相談する
+          {isWallhitting ? "川崎と壁打ちを申し込む" : "川崎裕一に直接相談する"}
         </h3>
         <p className="mb-6 text-sm text-zinc-500">
-          事業計画書を確認のうえ、ご連絡いたします。
+          {isWallhitting
+            ? "AIで整理した課題を川崎本人と直接話しましょう。内容確認後にご連絡します。"
+            : "事業計画書を確認のうえ、ご連絡いたします。"}
         </p>
 
         <div className="space-y-4">
@@ -120,18 +136,35 @@ export default function ConsultationForm({ onClose }: { onClose: () => void }) {
             />
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-zinc-700">
-              会社名 <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              placeholder="株式会社〇〇"
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none"
-            />
-          </div>
+          {!isWallhitting && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-zinc-700">
+                会社名 <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                placeholder="株式会社〇〇"
+                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none"
+              />
+            </div>
+          )}
+
+          {isWallhitting && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-zinc-700">
+                相談テーマ <span className="text-red-400">*</span>
+              </label>
+              <textarea
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="例：SaaSの価格設計で迷っています。フリープランの上限をどう設定すべきか…"
+                rows={4}
+                className="w-full resize-none rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none"
+              />
+            </div>
+          )}
 
           <div>
             <label className="mb-1 block text-sm font-medium text-zinc-700">
@@ -146,28 +179,30 @@ export default function ConsultationForm({ onClose }: { onClose: () => void }) {
             />
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-zinc-700">
-              事業計画書 <span className="text-red-400">*</span>
-            </label>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".pdf,.doc,.docx,.ppt,.pptx,.txt"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="hidden"
-            />
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="w-full rounded-lg border border-dashed border-zinc-300 px-3 py-4 text-sm text-zinc-500 transition-colors hover:border-zinc-400 hover:bg-zinc-50"
-            >
-              {file ? (
-                <span className="text-zinc-700">📎 {file.name}</span>
-              ) : (
-                "PDF / Word / PowerPoint をアップロード"
-              )}
-            </button>
-          </div>
+          {!isWallhitting && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-zinc-700">
+                事業計画書 <span className="text-red-400">*</span>
+              </label>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.txt"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="w-full rounded-lg border border-dashed border-zinc-300 px-3 py-4 text-sm text-zinc-500 transition-colors hover:border-zinc-400 hover:bg-zinc-50"
+              >
+                {file ? (
+                  <span className="text-zinc-700">📎 {file.name}</span>
+                ) : (
+                  "PDF / Word / PowerPoint をアップロード"
+                )}
+              </button>
+            </div>
+          )}
 
           <div className="rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-500">
             連絡先メール: {session.user.email}
@@ -189,7 +224,7 @@ export default function ConsultationForm({ onClose }: { onClose: () => void }) {
               disabled={sending}
               className="flex-1 rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50"
             >
-              {sending ? "送信中..." : "送信する"}
+              {sending ? "送信中..." : "申し込む"}
             </button>
           </div>
         </div>

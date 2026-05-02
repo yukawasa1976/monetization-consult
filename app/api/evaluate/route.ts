@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
-import { buildEvaluationSystemPrompt } from "@/app/lib/prompts";
+import { buildEvaluationSystemPromptBase, truncatePlanText } from "@/app/lib/prompts";
 import { checkRateLimit, evalLimiter, authedEvalLimiter } from "@/app/lib/rate-limit";
 import { createSession, logEvaluation } from "@/app/lib/db";
 import { parseAllScores } from "@/app/lib/parse-scores";
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { text: planText, truncated } = await extractPlanText(request);
-    const systemPrompt = buildEvaluationSystemPrompt(planText);
+    const truncatedPlan = truncatePlanText(planText);
 
     // Create session for logging
     let sessionId: string | null = null;
@@ -73,11 +73,20 @@ export async function POST(request: NextRequest) {
       model: "claude-sonnet-4-5-20250929",
       max_tokens: 8192,
       temperature: 0.3,
-      system: systemPrompt,
+      system: [
+        {
+          type: "text",
+          text: buildEvaluationSystemPromptBase(),
+          cache_control: { type: "ephemeral" },
+        },
+      ],
       messages: [
         {
           role: "user",
-          content: "この事業計画を5軸で評価してください。",
+          content: [
+            { type: "text" as const, text: "以下の事業計画を5軸で評価してください。" },
+            { type: "text" as const, text: `## 評価対象の事業計画\n\n${truncatedPlan}` },
+          ],
         },
       ],
     });

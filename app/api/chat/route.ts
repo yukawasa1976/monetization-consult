@@ -52,14 +52,41 @@ export async function POST(request: NextRequest) {
 
     const systemPrompt = await getChatSystemPrompt();
 
+    // Find the second-to-last user message to set a cache breakpoint.
+    // Anthropic prompt caching only applies to user turns, and caching the
+    // growing conversation prefix saves tokens on every turn from turn 3 onward.
+    const userIndices = messages
+      .map((msg: { role: string; content: string }, i: number) => (msg.role === "user" ? i : -1))
+      .filter((i: number) => i !== -1);
+    const cacheBreakpointIndex =
+      userIndices.length >= 2 ? userIndices[userIndices.length - 2] : -1;
+
+    const processedMessages = messages.map(
+      (msg: { role: string; content: string }, index: number) => {
+        if (index === cacheBreakpointIndex) {
+          return {
+            role: msg.role as "user" | "assistant",
+            content: [
+              {
+                type: "text" as const,
+                text: msg.content,
+                cache_control: { type: "ephemeral" as const },
+              },
+            ],
+          };
+        }
+        return {
+          role: msg.role as "user" | "assistant",
+          content: msg.content,
+        };
+      }
+    );
+
     const stream = anthropic.messages.stream({
       model: "claude-sonnet-4-5-20250929",
       max_tokens: 1024,
       system: systemPrompt,
-      messages: messages.map((msg: { role: string; content: string }) => ({
-        role: msg.role as "user" | "assistant",
-        content: msg.content,
-      })),
+      messages: processedMessages,
     });
 
     let fullResponse = "";
@@ -77,6 +104,16 @@ export async function POST(request: NextRequest) {
           }
 
           for await (const event of stream) {
+            if (event.type === "message_start" && event.message.usage) {
+              const u = event.message.usage as unknown as Record<string, number>;
+              if (u.cache_read_input_tokens || u.cache_creation_input_tokens) {
+                console.log("[cache]", {
+                  read: u.cache_read_input_tokens ?? 0,
+                  write: u.cache_creation_input_tokens ?? 0,
+                  input: u.input_tokens,
+                });
+              }
+            }
             if (
               event.type === "content_block_delta" &&
               event.delta.type === "text_delta"

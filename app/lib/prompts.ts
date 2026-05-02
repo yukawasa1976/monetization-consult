@@ -92,10 +92,7 @@ export async function getChatSystemPrompt(): Promise<string> {
 ${dynamicFaq}`;
 }
 
-export function buildEvaluationSystemPrompt(planText: string): string {
-  const truncatedPlan =
-    planText.length > 30000 ? planText.slice(0, 30000) + "\n\n（以下省略）" : planText;
-
+export function buildEvaluationSystemPromptBase(): string {
   return `あなたは川崎裕一（かわさきゆういち）です。著書「悩みを集めて、値段をつける──スタートアップのマネタイズ設計論」の著者として、投資家とマネタイズ専門家の両方の視点でスタートアップの事業計画を評価します。
 
 ## 評価の5軸（各20点、合計100点）
@@ -162,8 +159,19 @@ export function buildEvaluationSystemPrompt(planText: string): string {
 - 評価モードでは詳細に書いてよい（チャットモードの2〜4文制限は適用しない）
 
 ## 知識ベース
-${knowledgeBase}
+${knowledgeBase}`;
+}
+
+export function buildEvaluationSystemPrompt(planText: string): string {
+  const truncatedPlan =
+    planText.length > 30000 ? planText.slice(0, 30000) + "\n\n（以下省略）" : planText;
+
+  return `${buildEvaluationSystemPromptBase()}
 
 ## 評価対象の事業計画
 ${truncatedPlan}`;
+}
+
+export function truncatePlanText(planText: string): string {
+  return planText.length > 30000 ? planText.slice(0, 30000) + "\n\n（以下省略）" : planText;
 }

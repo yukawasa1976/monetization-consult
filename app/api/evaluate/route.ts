@@ -8,6 +8,7 @@ import { waitUntil } from "@vercel/functions";
 import { auth } from "@/auth";
 
 export const maxDuration = 60;
+export const maxRequestBodySize = "10mb";
 
 const anthropic = new Anthropic();
 

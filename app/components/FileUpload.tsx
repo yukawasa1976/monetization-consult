@@ -21,8 +21,8 @@ export default function FileUpload({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 4 * 1024 * 1024) {
-      alert("ファイルサイズは4MB以下にしてください");
+    if (file.size > 10 * 1024 * 1024) {
+      alert("ファイルサイズは10MB以下にしてください");
       return;
     }
     onFileSelect(file);

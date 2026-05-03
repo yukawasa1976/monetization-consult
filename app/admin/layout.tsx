@@ -5,6 +5,7 @@ const navItems = [
   { href: "/admin/sessions", label: "Sessions" },
   { href: "/admin/evaluations", label: "Evaluations" },
   { href: "/admin/insights", label: "Insights" },
+  { href: "/admin/investment-leads", label: "Investment Leads" },
 ];
 
 export default function AdminLayout({

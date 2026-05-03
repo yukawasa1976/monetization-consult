@@ -10,6 +10,11 @@ export default function ConsultationForm({ onClose, variant = "consultation" }: 
   const [xAccount, setXAccount] = useState("");
   const [topic, setTopic] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  // 投資評価4設問
+  const [answerNonSub, setAnswerNonSub] = useState("");
+  const [answerDelegation, setAnswerDelegation] = useState("");
+  const [answerEconomics, setAnswerEconomics] = useState("");
+  const [answerException, setAnswerException] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
@@ -74,6 +79,10 @@ export default function ConsultationForm({ onClose, variant = "consultation" }: 
         setError("お名前と相談テーマは必須です");
         return;
       }
+      if (!answerNonSub.trim() || !answerDelegation.trim() || !answerEconomics.trim() || !answerException.trim()) {
+        setError("4つの評価設問すべてに回答してください");
+        return;
+      }
     } else {
       if (!name.trim() || !company.trim() || !file) {
         setError("名前、会社名、事業計画書は必須です");
@@ -91,6 +100,12 @@ export default function ConsultationForm({ onClose, variant = "consultation" }: 
       if (xAccount.trim()) formData.append("xAccount", xAccount.trim());
       if (topic.trim()) formData.append("topic", topic.trim());
       if (file) formData.append("file", file);
+      if (isWallhitting) {
+        formData.append("answerNonSub", answerNonSub.trim());
+        formData.append("answerDelegation", answerDelegation.trim());
+        formData.append("answerEconomics", answerEconomics.trim());
+        formData.append("answerException", answerException.trim());
+      }
 
       const res = await fetch("/api/consultation", {
         method: "POST",
@@ -112,7 +127,7 @@ export default function ConsultationForm({ onClose, variant = "consultation" }: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-8 shadow-xl">
         <h3 className="mb-1 text-lg font-semibold text-zinc-900">
           {isWallhitting ? "川崎と壁打ちを申し込む" : "川崎裕一に直接相談する"}
         </h3>
@@ -152,18 +167,80 @@ export default function ConsultationForm({ onClose, variant = "consultation" }: 
           )}
 
           {isWallhitting && (
-            <div>
-              <label className="mb-1 block text-sm font-medium text-zinc-700">
-                相談テーマ <span className="text-red-400">*</span>
-              </label>
-              <textarea
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                placeholder="例：SaaSの価格設計で迷っています。フリープランの上限をどう設定すべきか…"
-                rows={4}
-                className="w-full resize-none rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none"
-              />
-            </div>
+            <>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-zinc-700">
+                  相談テーマ <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  placeholder="例：SaaSの価格設計で迷っています。フリープランの上限をどう設定すべきか…"
+                  rows={3}
+                  className="w-full resize-none rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 space-y-4">
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">AI活用の証明（必須・4問）</p>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-zinc-700">
+                    ① AI非代替性 <span className="text-red-400">*</span>
+                  </label>
+                  <p className="mb-1.5 text-xs text-zinc-500">AIがなければ成立しない提供価値を1つ挙げてください。人力代替した場合、何がどの水準で破綻しますか？</p>
+                  <textarea
+                    value={answerNonSub}
+                    onChange={(e) => setAnswerNonSub(e.target.value)}
+                    placeholder="例：顧客ごとの提案書を月500件生成しているが、人力では採算が合わない（1件あたり3時間、人件費換算で月450万円）"
+                    rows={3}
+                    className="w-full resize-none rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-zinc-700">
+                    ② 委任深度 <span className="text-red-400">*</span>
+                  </label>
+                  <p className="mb-1.5 text-xs text-zinc-500">AIが判断・実行し、人間は例外のみ対応する業務フローを1つ教えてください。入力、判断、実行、介入条件まで具体的に。</p>
+                  <textarea
+                    value={answerDelegation}
+                    onChange={(e) => setAnswerDelegation(e.target.value)}
+                    placeholder="例：問い合わせ→AIが優先度判定→Tier1は自動返信・送信、Tier2のみ人間確認。介入条件は「返金」「解約」キーワード"
+                    rows={3}
+                    className="w-full resize-none rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-zinc-700">
+                    ③ 運用経済性 <span className="text-red-400">*</span>
+                  </label>
+                  <p className="mb-1.5 text-xs text-zinc-500">AI関連の月間コストと、そのコストで生まれている主要アウトプットを教えてください。件数・売上/粗利・削減時間のいずれかも添えて。</p>
+                  <textarea
+                    value={answerEconomics}
+                    onChange={(e) => setAnswerEconomics(e.target.value)}
+                    placeholder="例：月3万円のAPIコストで提案書500件生成。同等品質を外注すると月45万円。粗利ベースで42万円/月の削減"
+                    rows={3}
+                    className="w-full resize-none rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-zinc-700">
+                    ④ 例外設計 <span className="text-red-400">*</span>
+                  </label>
+                  <p className="mb-1.5 text-xs text-zinc-500">そのAI運用で人間が介入する割合は何％ですか？止まる条件と、復旧方法も教えてください。</p>
+                  <textarea
+                    value={answerException}
+                    onChange={(e) => setAnswerException(e.target.value)}
+                    placeholder="例：介入率5%。停止条件はAPIエラー3回連続。復旧はSlackアラート→担当者がダッシュボードから手動再送"
+                    rows={3}
+                    className="w-full resize-none rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </>
           )}
 
           <div>

@@ -197,3 +197,62 @@ export async function getUserSessionCount(userId: string): Promise<number> {
   `;
   return result.rows[0].count;
 }
+
+// --- 投資リード ---
+
+export async function saveInvestmentLead(params: {
+  userId: string | null;
+  name: string;
+  email: string | null;
+  xAccount: string | null;
+  answers: Record<string, string>;
+  score: number;
+  level: string;
+}): Promise<string> {
+  const result = await sql`
+    INSERT INTO investment_leads (user_id, name, email, x_account, answers, score, level)
+    VALUES (
+      ${params.userId},
+      ${params.name},
+      ${params.email},
+      ${params.xAccount},
+      ${JSON.stringify(params.answers)},
+      ${params.score},
+      ${params.level}
+    )
+    RETURNING id
+  `;
+  return result.rows[0].id;
+}
+
+export async function getInvestmentLeads(level?: string, limit = 50, offset = 0) {
+  const result = level
+    ? await sql`
+        SELECT id, name, email, x_account, answers, score, level, created_at
+        FROM investment_leads
+        WHERE level = ${level}
+        ORDER BY score DESC, created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `
+    : await sql`
+        SELECT id, name, email, x_account, answers, score, level, created_at
+        FROM investment_leads
+        ORDER BY score DESC, created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `;
+  return result.rows;
+}
+
+export async function getInvestmentLeadStats() {
+  const result = await sql`
+    SELECT
+      COUNT(*) as total,
+      COUNT(*) FILTER (WHERE level = 'PRIORITY') as priority,
+      COUNT(*) FILTER (WHERE level = 'GO') as go,
+      COUNT(*) FILTER (WHERE level = 'HOLD') as hold,
+      COUNT(*) FILTER (WHERE level = 'NG') as ng,
+      ROUND(AVG(score), 1) as avg_score
+    FROM investment_leads
+  `;
+  return result.rows[0];
+}

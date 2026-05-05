@@ -131,11 +131,20 @@ export default function ConsultationForm({ onClose, variant = "consultation" }: 
         <h3 className="mb-1 text-lg font-semibold text-zinc-900">
           {isWallhitting ? "川崎と壁打ちを申し込む" : "川崎裕一に直接相談する"}
         </h3>
-        <p className="mb-6 text-sm text-zinc-500">
+        <p className="mb-4 text-sm text-zinc-500">
           {isWallhitting
             ? "AIで整理した課題を川崎本人と直接話しましょう。内容確認後にご連絡します。"
             : "事業計画書を確認のうえ、ご連絡いたします。"}
         </p>
+
+        {isWallhitting && (
+          <div className="mb-6 rounded-xl bg-zinc-900 p-4 text-white">
+            <p className="mb-2 text-sm font-semibold">投資検討の対象は「AI企業」のみです</p>
+            <p className="text-xs leading-relaxed text-zinc-300">
+              ここで言うAI企業とは、既存事業にAIを足した会社ではなく、AIなしでは事業が成立しない会社を指します。下記4問で「AI proof」かを自己診断してください。
+            </p>
+          </div>
+        )}
 
         <div className="space-y-4">
           <div>
